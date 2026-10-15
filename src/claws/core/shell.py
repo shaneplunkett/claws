@@ -29,6 +29,8 @@ PREFIX = (
     r"|time|command|exec|builtin|env(?:\s+-\S+)*|[A-Za-z_][A-Za-z0-9_]*=\S*)"
 )
 PREFIXES = re.compile(r"^(?:" + PREFIX + r"\s+)*")
+# The command word may be spelled as a path: /bin/rm, /run/current-system/sw/bin/systemctl.
+COMMAND_PATH = r"(?:\S*/)?"
 
 _HEREDOC = re.compile(
     r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1([^\n]*)\n(.*?)(?:^|\n)\s*\2\s*(?=\n|$)", re.DOTALL | re.MULTILINE
@@ -191,6 +193,8 @@ def _carrier_inner(tokens: list[str]) -> list[str]:
             if w in ("--run", "--command") and j + 1 < len(rest):
                 return [rest[j + 1]]
         return []
+    if head == "busybox":
+        return [shlex.join(rest)] if rest else []
     if head in ("xargs", "watch"):
         valued = {"-I", "-n", "-P", "-d", "-a", "-s", "-L"} if head == "xargs" else {"-n", "-d"}
         j = 0

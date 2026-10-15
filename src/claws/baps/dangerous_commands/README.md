@@ -27,6 +27,18 @@ The same keys go under `baps.dangerous-commands` in a project `.claws.json`.
 
 `ask` only means something when the harness will show a prompt. Claude Code in `--dangerously-skip-permissions` mode auto-approved a hook `ask` with no prompt, and `-p` runs deny it outright. The payload carries `permission_mode`, so when it is `bypassPermissions` or `dontAsk` the bap applies `unattended` instead: `deny` (the default) refuses and says why, `allow` lets it through, `ask` trusts the harness anyway.
 
+## What it will not catch
+
+The target is ordinary accidental command generation, not a sandbox. A static rule cannot see through these, and the test suite pins them as known limits so the list stays honest:
+
+- A target behind a runtime variable: `target=/; rm -rf "$target"`. `~`, `$HOME` and `${HOME}` are matched because they are fixed spellings.
+- Anything done inside an interpreter: `python3 -c 'shutil.rmtree(...)'`, Perl, Node.
+- A script or Makefile target in the repo: `./deploy.sh`, `make nuke`.
+- A carrier the parser does not know: `docker exec box rm -rf /`. Known carriers are listed in `core/shell.py`.
+- Recursive rm of an ordinary path is `low`, so at the default level `rm -rf node_modules` passes. If accidental data loss is the worry, run `level = "low"` with `ask = true`.
+
+Hook self-protection covers the config files and the `.claude` and `.codex` directories themselves against rm, mv, cp, ln, install, chmod and redirects. It does not cover the same done from Python, or editing a repo flake that re-renders the config on the next dev shell.
+
 ## How a command is read
 
 Rules do not run over the raw string. The command line is split into the simple commands it would run (on `;`, `&&`, `||`, `|`, newlines and `$(...)`), heredoc bodies and comments are dropped, tokens are unquoted, and carriers such as `ssh host '...'`, `bash -c '...'`, `sudo`, `timeout`, `xargs` and `nix develop -c` are followed into their inner command. Each rule has a scope:
