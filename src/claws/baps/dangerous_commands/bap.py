@@ -8,6 +8,11 @@ Options (all optional):
   level: "critical" | "high" | "medium" | "low"     default "high"
   ask:   true | false | [levels]                     default false
   deny:  [levels] that deny even when ask is on      default ["critical"]
+  unattended: "deny" | "allow" | "ask"               default "deny"
+         what an ask becomes when the harness will not show a prompt
+         (permission_mode bypassPermissions or dontAsk). Claude Code
+         auto-approved a hook "ask" in bypass mode, so "ask" there is
+         really "allow"; the default refuses instead.
   disable: [rule ids] to switch off
   allow: [regexes]; a command matching one is never blocked
   rules: [{id, level, pattern, reason, tools?, scope?}] extra rules; tools defaults to ["shell"],
@@ -37,10 +42,12 @@ DEFAULTS: JsonObject = {
     "disable": [],
     "allow": [],
     "rules": [],
+    "unattended": "deny",
 }
 
 
 Scope = Literal["command", "segment", "pipeline", "raw"]
+Unattended = Literal["deny", "allow", "ask"]
 
 
 @dataclass(frozen=True)
@@ -133,6 +140,7 @@ class Options:
     disable: frozenset[str]
     allow: tuple[re.Pattern[str], ...]
     rules: tuple[Rule, ...]
+    unattended: Unattended
 
 
 def _level(value: Json, what: str) -> str:
@@ -188,7 +196,19 @@ def parse_options(options: JsonObject) -> Options:
         disable=frozenset(as_str_list(merged.get("disable") or [], "disable")),
         allow=tuple(re.compile(p, re.DOTALL) for p in as_str_list(merged.get("allow") or [], "allow")),
         rules=tuple(_rule(spec) for spec in rules_value),
+        unattended=_unattended(merged.get("unattended"), "unattended"),
     )
+
+
+def _unattended(value: Json, what: str) -> Unattended:
+    mode = as_str(value, what)
+    if mode == "deny":
+        return "deny"
+    if mode == "allow":
+        return "allow"
+    if mode == "ask":
+        return "ask"
+    raise ValueError(f"{what}: unknown value {mode!r}; known: deny, allow, ask")
 
 
 def active_rules(options: Options) -> list[Rule]:
@@ -241,7 +261,13 @@ def run(event: Event, options: JsonObject) -> Decision:
     # No trailing full stop: Codex appends ". Command: ..." to the reason.
     reason = f"🐾 bap! dangerous-commands rule '{rule.id}' ({rule.level}): {rule.reason}"
     if rule.level in parsed.ask and rule.level not in parsed.deny:
-        return Decision.ask(reason + ". Want to let this one through?")
+        if not event.unattended or parsed.unattended == "ask":
+            return Decision.ask(reason + ". Want to let this one through?")
+        if parsed.unattended == "allow":
+            return Decision.none()
+        return Decision.deny(
+            reason + f". This would ask, but permission mode {event.permission_mode} shows no prompt, so no"
+        )
     return Decision.deny(reason + ". Ask Shane before doing that")
 
 

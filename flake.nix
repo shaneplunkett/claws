@@ -232,7 +232,7 @@
         let
           own = self.lib.project {
             inherit pkgs;
-            bap.dangerous-commands = { };
+            bap.dangerous-commands.ask = true;
           };
         in
         {

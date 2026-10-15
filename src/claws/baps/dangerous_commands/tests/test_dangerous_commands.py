@@ -289,6 +289,52 @@ class TestDecision:
         opts: JsonObject = {**OPTS, "ask": True, "deny": []}
         assert paws.run(shell("rm -rf /"), opts).action == "ask"
 
+    def test_ask_becomes_deny_when_unattended(self) -> None:
+        opts: JsonObject = {**OPTS, "ask": True}
+        ev = Event(
+            harness="claude",
+            kind="PreToolUse",
+            tool="shell",
+            command="git reset --hard",
+            permission_mode="bypassPermissions",
+        )
+        d = paws.run(ev, opts)
+        assert d.action == "deny"
+        assert d.reason is not None and "bypassPermissions" in d.reason
+        ev = Event(
+            harness="claude", kind="PreToolUse", tool="shell", command="git reset --hard", permission_mode="dontAsk"
+        )
+        assert paws.run(ev, opts).action == "deny"
+
+    def test_ask_still_asks_when_attended(self) -> None:
+        opts: JsonObject = {**OPTS, "ask": True}
+        for mode in ("default", "acceptEdits", "plan", "auto", None):
+            ev = Event(
+                harness="claude", kind="PreToolUse", tool="shell", command="git reset --hard", permission_mode=mode
+            )
+            assert paws.run(ev, opts).action == "ask", mode
+
+    def test_unattended_allow_and_ask(self) -> None:
+        ev = Event(
+            harness="claude",
+            kind="PreToolUse",
+            tool="shell",
+            command="git reset --hard",
+            permission_mode="bypassPermissions",
+        )
+        assert paws.run(ev, {**OPTS, "ask": True, "unattended": "allow"}).action == "none"
+        assert paws.run(ev, {**OPTS, "ask": True, "unattended": "ask"}).action == "ask"
+
+    def test_unattended_does_not_soften_deny(self) -> None:
+        ev = Event(
+            harness="claude", kind="PreToolUse", tool="shell", command="rm -rf /", permission_mode="bypassPermissions"
+        )
+        assert paws.run(ev, {**OPTS, "ask": True, "unattended": "allow"}).action == "deny"
+
+    def test_bad_unattended(self) -> None:
+        with pytest.raises(ValueError):
+            paws.run(shell("git reset --hard"), {**OPTS, "unattended": "maybe"})
+
     def test_bad_ask_level(self) -> None:
         with pytest.raises(ValueError):
             paws.run(shell("git reset --hard"), {**OPTS, "ask": ["nope"]})

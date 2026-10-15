@@ -25,7 +25,13 @@ class Event:
     paths: tuple[str, ...] = ()
     cwd: str | None = None
     session_id: str | None = None
+    permission_mode: str | None = None  # e.g. default, acceptEdits, bypassPermissions, dontAsk
     raw: JsonObject = field(default_factory=dict, compare=False, repr=False)
+
+    @property
+    def unattended(self) -> bool:
+        """True when the harness will not put a question in front of a human."""
+        return self.permission_mode in ("bypassPermissions", "dontAsk")
 
 
 @dataclass(frozen=True)

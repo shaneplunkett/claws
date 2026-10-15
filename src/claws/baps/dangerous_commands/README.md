@@ -10,6 +10,7 @@ programs.claws.bap.dangerous-commands = {
   level = "high";
   ask = true;                       # or [ "high" "medium" ]
   deny = [ "critical" ];
+  unattended = "deny";              # what an ask becomes when no prompt can be shown
   disable = [ "git-branch-D" ];
   allow = [ "systemctl restart plex$" ];
   rules = [
@@ -21,6 +22,10 @@ programs.claws.bap.dangerous-commands = {
 ```
 
 The same keys go under `baps.dangerous-commands` in a project `.claws.json`.
+
+## ask needs a human
+
+`ask` only means something when the harness will show a prompt. Claude Code in `--dangerously-skip-permissions` mode auto-approved a hook `ask` with no prompt, and `-p` runs deny it outright. The payload carries `permission_mode`, so when it is `bypassPermissions` or `dontAsk` the bap applies `unattended` instead: `deny` (the default) refuses and says why, `allow` lets it through, `ask` trusts the harness anyway.
 
 ## How a command is read
 

@@ -24,6 +24,7 @@ class Adapter:
         tool, command, paths = self.parse_tool(raw_tool, payload.get("tool_input"))
         cwd = payload.get("cwd")
         session_id = payload.get("session_id")
+        permission_mode = payload.get("permission_mode")
         return Event(
             harness=self.name,
             kind=kind,
@@ -33,6 +34,7 @@ class Adapter:
             paths=tuple(paths),
             cwd=cwd if isinstance(cwd, str) else None,
             session_id=session_id if isinstance(session_id, str) else None,
+            permission_mode=permission_mode if isinstance(permission_mode, str) else None,
             raw=payload,
         )
 

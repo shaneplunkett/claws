@@ -34,6 +34,21 @@ def test_shell_commands_come_through(harness: str) -> None:
     assert "echo claws-fixture" in commands
 
 
+@pytest.mark.parametrize("harness", ["claude", "codex"])
+def test_permission_mode_comes_through(harness: str) -> None:
+    modes = {adapters.get(harness).parse(p).permission_mode for p in fixture_payloads(harness, "PreToolUse")}
+    assert modes == {"bypassPermissions"}
+    assert all(adapters.get(harness).parse(p).unattended for p in fixture_payloads(harness, "PreToolUse"))
+
+
+def test_missing_permission_mode_is_attended() -> None:
+    ev = adapters.get("claude").parse(
+        {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ls"}}
+    )
+    assert ev.permission_mode is None
+    assert ev.unattended is False
+
+
 def test_claude_edit_paths() -> None:
     paths = {
         adapters.get("claude").parse(p).paths
