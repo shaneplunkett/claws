@@ -36,7 +36,7 @@ ignore = ["RUF001", "RUF002", "RUF003"]  # the paw emoji is the whole point
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["E501"]
 "src/claws/baps/*/tests/*" = ["E501"]
-"src/claws/baps/paws/bap.py" = ["E501"]  # one rule per line reads better than wrapped
+"src/claws/baps/dangerous_commands/bap.py" = ["E501"]  # one rule per line reads better than wrapped
 
 [tool.mypy]
 python_version = "3.11"

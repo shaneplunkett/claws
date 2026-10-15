@@ -42,7 +42,7 @@ imports = [ inputs.claws.homeManagerModules.default ];
 programs.claws = {
   enable = true;
   harnesses = [ "claude" "codex" ];
-  bap.paws = { enable = true; level = "high"; ask = true; };
+  bap.dangerous-commands = { enable = true; level = "high"; ask = true; };
 };
 ```
 
@@ -53,7 +53,7 @@ let
   clawsCfg = inputs.claws.lib.project {
     inherit pkgs;
     harnesses = [ "claude" "codex" ];
-    bap.paws = { level = "high"; ask = true; };
+    bap.dangerous-commands = { level = "high"; ask = true; };
   };
 in {
   devShells.default = pkgs.mkShell { shellHook = clawsCfg.shellHook; };
@@ -66,7 +66,7 @@ Entering the dev shell syncs `.claude/settings.local.json` and `.codex/hooks.jso
 Ad hoc, without a flake:
 
 ```sh
-nix run github:shaneplunkett/claws#install -- --harness claude,codex --baps paws --set paws.ask=true
+nix run github:shaneplunkett/claws#install -- --harness claude,codex --baps dangerous-commands --set dangerous-commands.ask=true
 ```
 
 That writes a committable `.claws.json` with the chosen baps and options, then the same two harness files pointing at it.
@@ -75,15 +75,15 @@ That writes a committable `.claws.json` with the chosen baps and options, then t
 
 Each bap has its own README next to its code.
 
-- [paws](src/claws/baps/paws/README.md): PreToolUse guard for dangerous shell commands and edits to hook config.
+- [dangerous-commands](src/claws/baps/dangerous_commands/README.md): PreToolUse guard for dangerous shell commands and edits to hook config.
 
 ## How config is found
 
-Lowest to highest: the bap's defaults, then `--config FILE` (or `$CLAWS_CONFIG`), which is what the home-manager module passes, then `.claws.json` in the working directory or any parent up to the git root. Scalars override, lists concatenate, so a repo can add rules and allows on top of your global ones. A repo can also lower `level`, which is why paws refuses edits to `.claws.json` and the harness settings files.
+Lowest to highest: the bap's defaults, then `--config FILE` (or `$CLAWS_CONFIG`), which is what the home-manager module passes, then `.claws.json` in the working directory or any parent up to the git root. Scalars override, lists concatenate, so a repo can add rules and allows on top of your global ones. A repo can also lower `level`, which is why dangerous-commands refuses edits to `.claws.json` and the harness settings files.
 
 ## Failure policy
 
-A bap always exits 0 and speaks through its JSON. If it crashes or gets a payload it cannot parse, a bap with `fail_closed=True` (paws) denies with the error in the reason; others stay quiet. Either way the error goes to stderr and the log.
+A bap always exits 0 and speaks through its JSON. If it crashes or gets a payload it cannot parse, a bap with `fail_closed=True` (dangerous-commands) denies with the error in the reason; others stay quiet. Either way the error goes to stderr and the log.
 
 ## Codex notes
 
@@ -91,4 +91,4 @@ Codex only runs project-level hooks it trusts. Either trust them once interactiv
 
 ## Status
 
-One bap, end to end. `nix flake check` runs the Python tests, strict mypy, ruff, nixfmt, statix and deadnix, a check that the Nix renderer matches the Python one, an eval of the home-manager module, and a run of the project installer inside a fresh git repo. The deny path has been run live against both harnesses, and claws installs paws into its own repo from its dev shell.
+One bap, end to end. `nix flake check` runs the Python tests, strict mypy, ruff, nixfmt, statix and deadnix, a check that the Nix renderer matches the Python one, an eval of the home-manager module, and a run of the project installer inside a fresh git repo. The deny path has been run live against both harnesses, and claws installs dangerous-commands into its own repo from its dev shell.

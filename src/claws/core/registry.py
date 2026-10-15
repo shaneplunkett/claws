@@ -42,8 +42,10 @@ def discover() -> dict[str, Bap]:
         bap = getattr(module, "BAP", None)
         if not isinstance(bap, Bap):
             raise TypeError(f"claws.baps.{info.name} must expose BAP: Bap")
-        if bap.name != info.name:
-            raise ValueError(f"claws.baps.{info.name} declares name {bap.name!r}; they must match")
+        if bap.name != info.name.replace("_", "-"):
+            raise ValueError(
+                f"claws.baps.{info.name} declares name {bap.name!r}; expected {info.name.replace('_', '-')!r}"
+            )
         found[bap.name] = bap
     return dict(sorted(found.items()))
 

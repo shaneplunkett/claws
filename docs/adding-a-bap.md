@@ -3,7 +3,7 @@
 A bap is one claws hook, a directory under `src/claws/baps/`. Nothing central lists baps; the Python registry and the Nix side both discover directories.
 
 1. Create `src/claws/baps/<name>/` with:
-   - `__init__.py` exporting `BAP` from `bap.py`.
+   - `__init__.py` exporting `BAP` from `bap.py`. The directory uses underscores, the bap `name` uses hyphens: `dangerous_commands/` declares `name="dangerous-commands"`.
    - `bap.py` with a `run(event, options) -> Decision` and a module-level `BAP = Bap(name=..., event=..., tools=..., timeout=..., fail_closed=..., defaults=..., run=run)`. The `name` must match the directory.
    - `bap.nix` mirroring `event`, `tools` and `timeout`. The `manifest-sync` check fails if it drifts from `BAP`.
    - `README.md` describing what it does and its options, with a Nix example.

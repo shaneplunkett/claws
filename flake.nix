@@ -128,7 +128,7 @@
             let
               cfg = self.lib.project {
                 inherit pkgs;
-                bap.paws = {
+                bap.dangerous-commands = {
                   level = "medium";
                   ask = true;
                 };
@@ -141,7 +141,7 @@
                   }).configFile;
               claudeCmd = (builtins.head (builtins.head cfg.rendered.claude.PreToolUse).hooks).command;
               ok =
-                pkgs.lib.hasInfix "claws-bap paws --harness claude --config /nix/store/" claudeCmd
+                pkgs.lib.hasInfix "claws-bap dangerous-commands --harness claude --config /nix/store/" claudeCmd
                 &&
                   builtins.attrNames cfg.rendered == [
                     "claude"
@@ -154,8 +154,8 @@
               cd $(mktemp -d)
               git init -q .
               ${cfg.app.program}
-              grep -q "claws-bap paws --harness codex" .codex/hooks.json
-              grep -q "claws-bap paws --harness claude" .claude/settings.local.json
+              grep -q "claws-bap dangerous-commands --harness codex" .codex/hooks.json
+              grep -q "claws-bap dangerous-commands --harness claude" .claude/settings.local.json
               grep -q "settings.local.json" .git/info/exclude
               ${cfg.app.program} --quiet | tee out
               [ ! -s out ]
@@ -192,7 +192,7 @@
                   {
                     programs.claws = {
                       enable = true;
-                      bap.paws = {
+                      bap.dangerous-commands = {
                         enable = true;
                         level = "high";
                         ask = true;
@@ -206,7 +206,7 @@
               claudeCmd =
                 (builtins.head (builtins.head c.programs.claude-code.settings.hooks.PreToolUse).hooks).command;
               ok =
-                pkgs.lib.hasInfix "claws-bap paws --harness claude --config /nix/store/" claudeCmd
+                pkgs.lib.hasInfix "claws-bap dangerous-commands --harness claude --config /nix/store/" claudeCmd
                 && !(c.programs.codex.settings ? hooks)
                 &&
                   builtins.attrNames c.programs.claws.rendered == [
@@ -216,7 +216,7 @@
                 && pkgs.lib.all (a: a.assertion) c.assertions
                 &&
                   builtins.fromJSON (builtins.readFile c.programs.claws.configFile) == {
-                    baps.paws = {
+                    baps.dangerous-commands = {
                       level = "high";
                       ask = true;
                     };
@@ -232,7 +232,7 @@
         let
           own = self.lib.project {
             inherit pkgs;
-            bap.paws = { };
+            bap.dangerous-commands = { };
           };
         in
         {

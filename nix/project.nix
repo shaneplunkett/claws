@@ -4,7 +4,7 @@
 #   clawsCfg = claws.lib.project {
 #     inherit pkgs;
 #     harnesses = [ "claude" "codex" ];
-#     bap.paws = { level = "high"; ask = true; };
+#     bap.dangerous-commands = { level = "high"; ask = true; };
 #   };
 #   devShells.default = pkgs.mkShell { shellHook = clawsCfg.shellHook; };
 #   apps.claws = clawsCfg.app;

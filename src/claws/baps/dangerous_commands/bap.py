@@ -1,4 +1,4 @@
-"""paws: paws off the dangerous stuff.
+"""dangerous-commands: paws off the dangerous stuff.
 
 A PreToolUse guard for shell commands and file edits. Rules have a level;
 `level` sets the lowest level that triggers. A triggered rule denies unless
@@ -104,7 +104,7 @@ BUILTIN: tuple[Rule, ...] = (
 
 @dataclass(frozen=True)
 class Options:
-    """Validated paws options. Built from merged JSON config by parse_options."""
+    """Validated dangerous-commands options. Built from merged JSON config by parse_options."""
 
     level: str
     ask: frozenset[str]
@@ -190,14 +190,14 @@ def run(event: Event, options: JsonObject) -> Decision:
     if rule is None:
         return Decision.none()
     # No trailing full stop: Codex appends ". Command: ..." to the reason.
-    reason = f"🐾 bap! paws rule '{rule.id}' ({rule.level}): {rule.reason}"
+    reason = f"🐾 bap! dangerous-commands rule '{rule.id}' ({rule.level}): {rule.reason}"
     if rule.level in parsed.ask and rule.level not in parsed.deny:
         return Decision.ask(reason + ". Want to let this one through?")
     return Decision.deny(reason + ". Ask Shane before doing that")
 
 
 BAP = Bap(
-    name="paws",
+    name="dangerous-commands",
     event=EVENT,
     tools=("shell", "edit"),
     timeout=10,

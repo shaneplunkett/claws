@@ -17,7 +17,7 @@ let
   harnesses = builtins.attrNames matchers;
 
   # Render a set of baps into the {event = [entries]} hooks block a harness wants.
-  #   bapSet { harness = "claude"; baps = [ "paws" ]; bin = "/nix/store/..-claws/bin/claws-bap"; configFile = null; }
+  #   bapSet { harness = "claude"; baps = [ "dangerous-commands" ]; bin = "/nix/store/..-claws/bin/claws-bap"; configFile = null; }
   bapSet =
     {
       harness,

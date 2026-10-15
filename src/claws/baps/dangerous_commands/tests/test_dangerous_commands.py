@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from claws import adapters
-from claws.baps.paws import bap as paws
+from claws.baps.dangerous_commands import bap as paws
 from claws.core.events import Event
 from claws.core.jsontypes import Json, JsonObject
 from claws.testing import edit_event as edit

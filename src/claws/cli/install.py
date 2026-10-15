@@ -2,7 +2,7 @@
 
 Ad hoc, from the command line:
 
-  claws-install --harness claude,codex --baps paws [--set paws.level=high] [--dir .]
+  claws-install --harness claude,codex --baps dangerous-commands [--set dangerous-commands.level=high] [--dir .]
 
 writes .claws.json (the manifest, safe to commit) and points the baps at it.
 

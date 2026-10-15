@@ -7,11 +7,11 @@ import pytest
 from claws.core import registry
 
 
-def test_discovers_paws() -> None:
+def test_discovers_dangerous_commands() -> None:
     baps = registry.discover()
-    assert "paws" in baps
-    assert baps["paws"].event == "PreToolUse"
-    assert baps["paws"].fail_closed is True
+    assert "dangerous-commands" in baps
+    assert baps["dangerous-commands"].event == "PreToolUse"
+    assert baps["dangerous-commands"].fail_closed is True
 
 
 def test_names_sorted() -> None:
