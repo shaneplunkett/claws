@@ -81,11 +81,32 @@ TABLE = [
     ("sudo shutdown -h now", "power"),
     ("ssh pve1 reboot", "power"),
     ("sed -i 's/high/low/' .claws.json", "hook-config-tamper"),
-    ("echo '{}' > .claude/settings.json", "hook-config-tamper"),
+    ("echo '{}' > .claude/settings.json", "hook-config-redirect"),
     ("jq '.hooks={}' .codex/hooks.json > tmp && mv tmp .codex/hooks.json", "hook-config-tamper"),
     ("rm ~/.codex/config.toml", "hook-config-tamper"),
     ("cp evil.json .claude/settings.local.json", "hook-config-tamper"),
     ("tee .claws.json < x", "hook-config-tamper"),
+    ("cat <<EOF > .claws.json\n{}\nEOF", "hook-config-redirect"),
+    # from karanb192/claude-code-hooks
+    ("rm --recursive ~/", "rm-home"),
+    ("rm -rf /tmp ~/", "rm-home"),
+    ("rm -rf '~/'", "rm-home"),
+    ('rm -rf "$HOME"', "rm-home"),
+    (":(){:|:&};:", "fork-bomb"),
+    # carriers, prefixes, substitutions and chains still reach the real command
+    ('bash -c "git reset --hard"', "git-reset-hard"),
+    ("nix develop -c sh -c 'rm -rf /'", "rm-root"),
+    ("sudo -u root rm -rf /", "rm-root"),
+    ("FOO=1 sudo rm -rf /", "rm-root"),
+    ("echo hi; rm -rf /", "rm-root"),
+    ("ls && git push --force origin main", "git-force-main"),
+    ("echo $(rm -rf ~)", "rm-home"),
+    ("yes | sudo rm -rf /", "rm-root"),
+    ("timeout 5 terraform apply", "terraform-apply"),
+    ("ssh -i key -p 22 root@pve1 'qm stop 105'", "pve-mutate"),
+    ("eval 'git reset --hard'", "git-reset-hard"),
+    ("nix-shell --run 'terraform apply'", "terraform-apply"),
+    ("xargs rm -rf", "rm-rf"),
     # medium
     ("git push --force origin feature", "git-force-any"),
     ("git checkout .", "git-checkout-dot"),
@@ -163,6 +184,21 @@ SAFE = [
     "shutdown_hook=1 ./run",
     "timeout 5 ./thing",
     "git log --oneline",
+    "dd if=/dev/zero of=testfile bs=1M count=10",
+    "curl -o file.txt https://example.com",
+    "code .",
+    'git commit -m "msg"',
+    # command words inside a quoted argument of some other command are prose, not commands
+    'git commit -m "rm -rf /"',
+    'vex add-entity --summary "terraform apply lands by PR, qm stop is a drift"',
+    'echo "git reset --hard"',
+    "claude -p 'run git reset --hard HEAD and tell me'",
+    "grep -rn 'systemctl restart' .",
+    "rg 'lvremove|wipefs' src",
+    "python3 - <<'EOF'\nimport os\nos.system('rm -rf /')\nEOF",
+    "cat <<'EOF' > notes.md\nterraform apply\nEOF",
+    "ls # rm -rf /",
+    "echo 'rm .claws.json'",
 ]
 
 
@@ -174,6 +210,16 @@ def test_dangerous_commands_match(command: str, expected: str) -> None:
 @pytest.mark.parametrize("command", SAFE)
 def test_safe_commands_pass(command: str) -> None:
     assert rule_for(command, level="low") is None
+
+
+# the inspiration repo's allow list, at its default level (high); at low these are an rm-rf glance
+INSPIRATION_SAFE_AT_HIGH = ["rm -rf ~/Documents", "rm -rf /tmp/test", "rm -rf ./node_modules"]
+
+
+@pytest.mark.parametrize("command", INSPIRATION_SAFE_AT_HIGH)
+def test_inspiration_allow_list_passes_at_high(command: str) -> None:
+    assert rule_for(command) is None
+    assert rule_for(command, level="low") == "rm-rf"
 
 
 def test_every_builtin_rule_is_exercised() -> None:

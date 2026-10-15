@@ -75,7 +75,7 @@ That writes a committable `.claws.json` with the chosen baps and options, then t
 
 Each bap has its own README next to its code.
 
-- [dangerous-commands](src/claws/baps/dangerous_commands/README.md): PreToolUse guard for dangerous shell commands and edits to hook config.
+- [dangerous-commands](src/claws/baps/dangerous_commands/README.md): PreToolUse guard for dangerous shell commands and edits to hook config. Parses the command line, so quoted prose does not trip it.
 
 ## How config is found
 
