@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claws"
+version = "0.1.0"
+description = "Agent hooks for Claude Code and Codex"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+claws-bap = "claws.cli.bap:main"
+claws-install = "claws.cli.install:main"
+claws-manifest = "claws.cli.manifest:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["*.tests", "*.tests.*"]
+
+[tool.setuptools.package-data]
+claws = ["fixtures/*/*.jsonl", "baps/*/bap.nix", "baps/*/README.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src/claws/baps"]
+addopts = "--import-mode=importlib"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "RUF", "FURB", "SIM", "PTH"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # the paw emoji is the whole point
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+"src/claws/baps/*/tests/*" = ["E501"]
+"src/claws/baps/paws/bap.py" = ["E501"]  # one rule per line reads better than wrapped
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+disallow_any_explicit = true
+mypy_path = "src"
+packages = ["claws"]
