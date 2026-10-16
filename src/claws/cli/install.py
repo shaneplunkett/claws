@@ -1,19 +1,12 @@
-"""claws-install: write a set of baps into a repo's project-level config.
+"""claws-install: write a repo's wiring from the bap set its flake declares.
 
-Ad hoc, from the command line:
+  claws-install --from /nix/store/...-claws.json [--dir .] [--bin PATH] [--quiet]
 
-  claws-install --harness claude,codex --baps dangerous-commands \
-      [--set dangerous-commands.level=high] [--dir .]
+lib.project's dev shell hook and app run this; there is no ad hoc mode
+(ADR 0003). The file names the harnesses and baps, and every bap is pointed
+at it as its --config.
 
-writes .claws.json (the manifest, safe to commit) and points the baps at it.
-
-Declarative, from a repo flake (see claws.lib.project):
-
-  claws-install --from /nix/store/...-claws.json [--quiet]
-
-points the baps at that file instead and leaves .claws.json alone.
-
-Either way the hook entries are merged into .claude/settings.local.json and
+The hook entries are merged into .claude/settings.local.json and
 .codex/hooks.json. Those contain Nix store paths, so they are per machine;
 the installer adds them to .git/info/exclude. Existing entries are kept;
 entries that point at an older claws build are replaced.
@@ -28,7 +21,6 @@ import sys
 from pathlib import Path
 
 from ..core import registry
-from ..core.config import PROJECT_FILE
 from ..core.jsontypes import HookBlock, HookEntry, Json, JsonObject, as_object, as_str_list, loads
 from .manifest import render
 
@@ -84,21 +76,6 @@ def merge_hooks(existing: JsonObject, rendered: HookBlock, binary: str) -> JsonO
     return {**existing, "hooks": hooks}
 
 
-def parse_set(items: list[str]) -> dict[str, JsonObject]:
-    out: dict[str, JsonObject] = {}
-    for item in items:
-        key, _, raw = item.partition("=")
-        bap, _, opt = key.partition(".")
-        if not (bap and opt and _):
-            raise SystemExit(f"--set wants bap.option=value, got {item!r}")
-        try:
-            value = loads(raw)
-        except json.JSONDecodeError:
-            value = raw
-        out.setdefault(bap, {})[opt] = value
-    return out
-
-
 def dump(data: JsonObject) -> str:
     return json.dumps(data, indent=2, sort_keys=True) + "\n"
 
@@ -140,18 +117,11 @@ def say(quiet: bool, message: str) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="claws-install")
     parser.add_argument(
-        "--harness", default=None, help="comma list; default claude,codex or what --from says"
-    )
-    parser.add_argument(
-        "--baps", default=None, help="comma list; default is what .claws.json says, else all"
-    )
-    parser.add_argument("--set", action="append", default=[], metavar="BAP.OPT=VALUE")
-    parser.add_argument(
         "--from",
         dest="from_file",
-        default=None,
+        required=True,
         metavar="FILE",
-        help="declarative config to point baps at",
+        help="the bap set lib.project generated; baps are pointed at it",
     )
     parser.add_argument("--dir", default=".")
     parser.add_argument("--bin", default=None)
@@ -159,31 +129,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     root = Path(args.dir).resolve()
-    harnesses = args.harness.split(",") if args.harness else ["claude", "codex"]
-
-    if args.from_file:
-        if args.baps or args.set:
-            raise SystemExit(
-                "--from takes its baps and options from the file; drop --baps and --set"
-            )
-        config_path = Path(args.from_file).resolve()
-        declared = read_json(config_path, {})
-        baps = list(as_object(declared.get("baps", {}), f"{config_path}: baps"))
-        declared_harnesses = declared.get("harnesses")
-        if not args.harness and declared_harnesses is not None:
-            harnesses = as_str_list(declared_harnesses, f"{config_path}: harnesses")
-    else:
-        config_path = root / PROJECT_FILE
-        manifest = read_json(config_path, {"baps": {}})
-        chosen = as_object(manifest.get("baps", {}), f"{config_path}: baps")
-        manifest["baps"] = chosen
-        baps = args.baps.split(",") if args.baps else list(chosen) or registry.names()
-        for name in baps:
-            chosen.setdefault(name, {})
-        for bap, opts in parse_set(args.set).items():
-            as_object(chosen.setdefault(bap, {}), f"baps.{bap}").update(opts)
-        if write_json(config_path, manifest):
-            say(False, f"manifest: {config_path.relative_to(root)}")
+    config_path = Path(args.from_file).resolve()
+    declared = read_json(config_path, {})
+    baps = list(as_object(declared.get("baps", {}), f"{config_path}: baps"))
+    declared_harnesses = declared.get("harnesses")
+    harnesses = (
+        as_str_list(declared_harnesses, f"{config_path}: harnesses")
+        if declared_harnesses is not None
+        else ["claude", "codex"]
+    )
 
     for name in baps:
         registry.get(name)  # validates
