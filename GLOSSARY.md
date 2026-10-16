@@ -1,16 +1,20 @@
 # claws
 
-Hooks for coding agents, written once and delivered to more than one agent harness.
+Hooks for coding agents, written once and delivered to more than one agent harness. These words are also the option names: `programs.claws.bap.<bap>.groups.<group>.enable` reads straight off the glossary.
 
-## Language
+## The framework
 
-**Harness**:
-A coding agent program that runs hooks, and so runs baps. Today that is Claude Code and Codex.
-_Avoid_: agent, client, tool (all overloaded)
+**claws**:
+The framework as a whole: the baps, the adapters that carry them to each harness, and the Nix flake that delivers them.
+_Avoid_: hooks repo, plugin, toolkit
 
 **Bap**:
 One claws hook: a program a harness runs at one of its events, which reads the event payload and replies with a decision.
 _Avoid_: hook (for ours; the harness-side mechanism keeps that name), plugin, guard, script
+
+**Harness**:
+A coding agent program that runs hooks, and so runs baps. Today that is Claude Code and Codex.
+_Avoid_: agent, client, tool (all overloaded)
 
 **Event**:
 The point in the harness loop at which a bap runs. PreToolUse, PostToolUse, SessionStart, UserPromptSubmit, Stop.
@@ -29,13 +33,51 @@ The per-harness code that turns a payload into a normalised event and a decision
 _Avoid_: shim, translator, driver
 
 **Decision**:
-What a bap says back to the harness. Allow, deny, ask, or add context, with an optional reason.
+What a bap says back to the harness: allow, deny with a reason that points at the right path, or add context.
 _Avoid_: result, verdict, response, output
+
+## Configuring baps
 
 **Bap set**:
 The baps a consumer has chosen to enable, with their options, for one or more harnesses.
 _Avoid_: selection, profile, bundle
 
+**Scope**:
+Where a bap set is declared: global, in home-manager, or repo, in that repo's flake. A bap on in both scopes runs once, with the repo layered over global.
+_Avoid_: context, layer, level
+
+**Wiring**:
+The harness config files that tell a harness to run baps: `.claude/settings.local.json` and `.codex/hooks.json` in a repo, the harness settings files globally. Nix writes them; nothing else should.
+_Avoid_: install, hook config
+
 **Installer**:
-The flake app that writes a bap set into a repo's project-level hook config files.
-_Avoid_: setup script, bootstrap
+The claws program that writes a repo's wiring from its bap set, run by the dev shell.
+_Avoid_: setup script, bootstrap, sync
+
+## Rules
+
+**Rule**:
+One pattern a bap checks, with the reason it gives when the pattern matches. Every rule lives in claws.
+_Avoid_: check, pattern, policy
+
+**Floor**:
+The rules of a bap that are always on and that no scope can switch off.
+_Avoid_: defaults, baseline, core rules
+
+**Level**:
+How much of a bap's floor applies: critical, high or strict, each including the ones before it.
+_Avoid_: severity, mode, strictness
+
+**Group**:
+A named bundle of a bap's rules for one CLI or workflow, such as tofu, proxmox or gh, switched on per scope.
+_Avoid_: pack, category, ruleset, preset
+
+## Performance
+
+**Budget**:
+The most time a bap may spend on one event beyond bare Python startup, declared by the bap itself.
+_Avoid_: limit, SLA, timeout (the harness's kill switch is a separate thing)
+
+**Bench**:
+The claws benchmark that runs each bap against captured payloads and checks it against its budget.
+_Avoid_: perf test, profiler
