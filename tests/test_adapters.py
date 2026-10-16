@@ -43,17 +43,13 @@ def test_permission_mode_comes_through(harness: str) -> None:
         for p in fixture_payloads(harness, "PreToolUse")
     }
     assert modes == {"bypassPermissions"}
-    assert all(
-        adapters.get(harness).parse(p).unattended for p in fixture_payloads(harness, "PreToolUse")
-    )
 
 
-def test_missing_permission_mode_is_attended() -> None:
+def test_missing_permission_mode_is_none() -> None:
     ev = adapters.get("claude").parse(
         {"hook_event_name": "PreToolUse", "tool_name": "Bash", "tool_input": {"command": "ls"}}
     )
     assert ev.permission_mode is None
-    assert ev.unattended is False
 
 
 def test_claude_edit_paths() -> None:
@@ -129,10 +125,19 @@ class TestRender:
             }
         }
 
-    def test_ask_pre_tool_use(self, harness: str) -> None:
+    def test_allow_pre_tool_use(self, harness: str) -> None:
         ev = Event(harness=harness, kind="PreToolUse")
-        out = adapters.get(harness).render(Decision.ask("sure?"), ev)
-        assert out["hookSpecificOutput"]["permissionDecision"] == "ask"
+        out = adapters.get(harness).render(Decision.allow(), ev)
+        assert out == {
+            "hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "allow"}
+        }
+
+    def test_context_pre_tool_use(self, harness: str) -> None:
+        ev = Event(harness=harness, kind="PreToolUse")
+        out = adapters.get(harness).render(Decision(context="heads up"), ev)
+        assert out == {
+            "hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": "heads up"}
+        }
 
     def test_deny_elsewhere_blocks(self, harness: str) -> None:
         ev = Event(harness=harness, kind="PostToolUse")

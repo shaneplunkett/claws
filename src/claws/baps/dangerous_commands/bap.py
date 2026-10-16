@@ -1,22 +1,19 @@
 """dangerous-commands: paws off the dangerous stuff.
 
 A PreToolUse guard for shell commands and file edits. Rules have a level;
-`level` sets the lowest level that triggers. A triggered rule denies unless
-its level is in `ask`, except levels in `deny` always deny.
+`level` sets the lowest level that triggers. A triggered rule always denies;
+baps never ask (ADR 0006).
 
 Options (all optional):
   level: "critical" | "high" | "medium" | "low"     default "high"
-  ask:   true | false | [levels]                     default false
-  deny:  [levels] that deny even when ask is on      default ["critical"]
-  unattended: "deny" | "allow" | "ask"               default "deny"
-         what an ask becomes when the harness will not show a prompt
-         (permission_mode bypassPermissions or dontAsk). Claude Code
-         auto-approved a hook "ask" in bypass mode, so "ask" there is
-         really "allow"; the default refuses instead.
   disable: [rule ids] to switch off
   allow: [regexes]; a command matching one is never blocked
   rules: [{id, level, pattern, reason, tools?, scope?}] extra rules; tools defaults to ["shell"],
          scope to "segment" (anywhere in one unquoted simple command). See Rule for the scopes.
+
+The retired `ask`, `deny` and `unattended` options are ignored, not rejected.
+This bap fails closed, so rejecting a key an old config still sets would deny
+every shell command.
 """
 
 from __future__ import annotations
@@ -37,17 +34,13 @@ RANK = {name: i for i, name in enumerate(LEVELS)}
 
 DEFAULTS: JsonObject = {
     "level": "high",
-    "ask": False,
-    "deny": ["critical"],
     "disable": [],
     "allow": [],
     "rules": [],
-    "unattended": "deny",
 }
 
 
 Scope = Literal["command", "segment", "pipeline", "raw"]
-Unattended = Literal["deny", "allow", "ask"]
 
 
 @dataclass(frozen=True)
@@ -314,12 +307,9 @@ class Options:
     """Validated dangerous-commands options. Built from merged JSON config by parse_options."""
 
     level: str
-    ask: frozenset[str]
-    deny: frozenset[str]
     disable: frozenset[str]
     allow: tuple[re.Pattern[str], ...]
     rules: tuple[Rule, ...]
-    unattended: Unattended
 
 
 def _level(value: Json, what: str) -> str:
@@ -327,14 +317,6 @@ def _level(value: Json, what: str) -> str:
     if level not in RANK:
         raise ValueError(f"{what}: unknown level {level!r}; known: {list(LEVELS)}")
     return level
-
-
-def _levels(value: Json, what: str) -> frozenset[str]:
-    if value is True:
-        return frozenset(LEVELS)
-    if value is False or value is None:
-        return frozenset()
-    return frozenset(_level(v, what) for v in as_str_list(value, what))
 
 
 def _rule(spec: Json) -> Rule:
@@ -370,26 +352,12 @@ def parse_options(options: JsonObject) -> Options:
         raise ValueError("rules must be a list")
     return Options(
         level=_level(merged.get("level"), "level"),
-        ask=_levels(merged.get("ask"), "ask"),
-        deny=_levels(merged.get("deny"), "deny"),
         disable=frozenset(as_str_list(merged.get("disable") or [], "disable")),
         allow=tuple(
             re.compile(p, re.DOTALL) for p in as_str_list(merged.get("allow") or [], "allow")
         ),
         rules=tuple(_rule(spec) for spec in rules_value),
-        unattended=_unattended(merged.get("unattended"), "unattended"),
     )
-
-
-def _unattended(value: Json, what: str) -> Unattended:
-    mode = as_str(value, what)
-    if mode == "deny":
-        return "deny"
-    if mode == "allow":
-        return "allow"
-    if mode == "ask":
-        return "ask"
-    raise ValueError(f"{what}: unknown value {mode!r}; known: deny, allow, ask")
 
 
 def active_rules(options: Options) -> list[Rule]:
@@ -437,22 +405,11 @@ def match(event: Event, options: JsonObject) -> Rule | None:
 def run(event: Event, options: JsonObject) -> Decision:
     if event.kind != EVENT:
         return Decision.none()
-    parsed = parse_options(options)
     rule = match(event, options)
     if rule is None:
         return Decision.none()
     # No trailing full stop: Codex appends ". Command: ..." to the reason.
     reason = f"🐾 bap! dangerous-commands rule '{rule.id}' ({rule.level}): {rule.reason}"
-    if rule.level in parsed.ask and rule.level not in parsed.deny:
-        if not event.unattended or parsed.unattended == "ask":
-            return Decision.ask(reason + ". Want to let this one through?")
-        if parsed.unattended == "allow":
-            return Decision.none()
-        return Decision.deny(
-            reason
-            + f". This would ask, but permission mode {event.permission_mode} shows no prompt,"
-            " so no"
-        )
     return Decision.deny(reason + ". Ask Shane before doing that")
 
 

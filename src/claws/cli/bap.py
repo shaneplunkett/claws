@@ -40,7 +40,7 @@ def respond(
     event = adapter.parse(payload)
     options = config.for_bap(bap, spec.options(), explicit_config, event.cwd)
     decision = spec.run(event, options)
-    if decision.action in ("deny", "ask"):
+    if decision.action == "deny":
         log(
             bap,
             {

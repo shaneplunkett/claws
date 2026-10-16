@@ -22,13 +22,26 @@ def test_explicit_config_file(tmp_path: Path) -> None:
 
 def test_env_config_file(tmp_path: Path) -> None:
     cfg = tmp_path / "c.json"
-    cfg.write_text(json.dumps({"baps": {"dangerous-commands": {"ask": True}}}))
+    cfg.write_text(json.dumps({"baps": {"dangerous-commands": {"level": "critical"}}}))
     out, _ = run_cli(
         ["dangerous-commands", "--harness", "claude"],
         json.dumps(shell_payload("claude", "git reset --hard")),
         env={"CLAWS_CONFIG": str(cfg)},
     )
-    assert permission(out)[0] == "ask"
+    assert out == {}
+
+
+def test_retired_ask_options_still_deny_by_rule(tmp_path: Path) -> None:
+    cfg = tmp_path / "c.json"
+    retired = {"ask": True, "deny": [], "unattended": "allow"}
+    cfg.write_text(json.dumps({"baps": {"dangerous-commands": retired}}))
+    out, _ = run_cli(
+        ["dangerous-commands", "--harness", "claude", "--config", str(cfg)],
+        json.dumps(shell_payload("claude", "git reset --hard")),
+    )
+    decision, reason = permission(out)
+    assert decision == "deny"
+    assert "git-reset-hard" in reason
 
 
 def test_project_config_found_from_cwd(tmp_path: Path) -> None:

@@ -2,15 +2,12 @@
 
 Paws off the dangerous stuff. A PreToolUse guard for shell commands and file edits.
 
-Rules have a level: critical, high, medium or low. `level` is the lowest level that fires, default high. A fired rule denies, unless its level is in `ask`, and levels in `deny` always deny (default critical).
+Rules have a level: critical, high, medium or low. `level` is the lowest level that fires, default high. A fired rule always denies, with a reason that tells the agent to check with you first. Baps never ask; see ADR 0006.
 
 ```nix
 programs.claws.bap.dangerous-commands = {
   enable = true;
   level = "high";
-  ask = true;                       # or [ "high" "medium" ]
-  deny = [ "critical" ];
-  unattended = "deny";              # what an ask becomes when no prompt can be shown
   disable = [ "git-branch-D" ];
   allow = [ "systemctl restart plex$" ];
   rules = [
@@ -23,9 +20,7 @@ programs.claws.bap.dangerous-commands = {
 
 The same keys go under `baps.dangerous-commands` in a project `.claws.json`.
 
-## ask needs a human
-
-`ask` only means something when the harness will show a prompt. Claude Code in `--dangerously-skip-permissions` mode auto-approved a hook `ask` with no prompt, and `-p` runs deny it outright. The payload carries `permission_mode`, so when it is `bypassPermissions` or `dontAsk` the bap applies `unattended` instead: `deny` (the default) refuses and says why, `allow` lets it through, `ask` trusts the harness anyway.
+Older configs may still set `ask`, `deny` or `unattended`. Those options are gone and the bap ignores them rather than failing closed on every command.
 
 ## What it will not catch
 
@@ -35,7 +30,7 @@ The target is ordinary accidental command generation, not a sandbox. A static ru
 - Anything done inside an interpreter: `python3 -c 'shutil.rmtree(...)'`, Perl, Node.
 - A script or Makefile target in the repo: `./deploy.sh`, `make nuke`.
 - A carrier the parser does not know: `docker exec box rm -rf /`. Known carriers are listed in `core/shell.py`.
-- Recursive rm of an ordinary path is `low`, so at the default level `rm -rf node_modules` passes. If accidental data loss is the worry, run `level = "low"` with `ask = true`.
+- Recursive rm of an ordinary path is `low`, so at the default level `rm -rf node_modules` passes. If accidental data loss is the worry, run `level = "low"`.
 
 Hook self-protection covers the config files and the `.claude` and `.codex` directories themselves against rm, mv, cp, ln, install, chmod and redirects. It does not cover the same done from Python, or editing a repo flake that re-renders the config on the next dev shell.
 
@@ -52,4 +47,4 @@ Extra `rules` default to `segment`, since hand-written patterns are usually subs
 
 Built-in rules are the `BUILTIN` table in `bap.py`. They cover the usual rm, dd and mkfs horrors, force pushes and pushes straight to main, `git reset --hard`, terraform and tofu applies, Proxmox `qm`, `pct` and `pvesh` changes, `nixos-rebuild switch` and friends, `systemctl stop` and `restart`, and edits to any agent hook config. Every rule has a row in `tests/test_dangerous_commands.py`, and a test fails if a rule is added without one.
 
-Denies and asks are logged to `~/.local/state/claws/dangerous-commands.jsonl`. `CLAWS_NO_LOG=1` turns that off.
+Denies are logged to `~/.local/state/claws/dangerous-commands.jsonl`. `CLAWS_NO_LOG=1` turns that off.

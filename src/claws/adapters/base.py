@@ -55,7 +55,7 @@ class Adapter:
             return {}
         out: HookResponse = {}
         specific: HookSpecificOutput = {"hookEventName": event.kind}
-        if event.kind == "PreToolUse" and decision.action in ("allow", "deny", "ask"):
+        if event.kind == "PreToolUse" and decision.action in ("allow", "deny"):
             specific["permissionDecision"] = decision.action
             if decision.reason:
                 specific["permissionDecisionReason"] = decision.reason
