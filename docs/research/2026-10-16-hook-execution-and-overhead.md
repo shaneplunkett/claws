@@ -1,0 +1,189 @@
+# How harnesses run hooks, and keeping a bap's per-call cost near zero
+
+- **Question:** How do Claude Code and Codex run hooks (concurrency of matching hooks on one event, blocking, timeouts, async options, startup cost guidance), and how do other hook projects keep per-call overhead low? Feeds SHA-211 and SHA-212: a lean path per bap, one process per event, or a daemon.
+- **Researched:** 2026-10-16, normal
+
+## Sub-questions
+
+1. Codex: concurrency, blocking, timeouts, dedupe, trust, Stop and PostToolUse contracts, performance guidance: answered (from the openai/codex source at rust-v0.162.1)
+2. Claude Code: the same questions: answered, with gaps on dedupe identity and on combining several Stop blocks
+3. Other hook projects: how they keep per-call cost low: answered, with no Python stdlib project publishing numbers
+4. How lean a claws bap can get in stdlib Python: answered by a throwaway prototype measured locally (outside the repo)
+
+## Claims
+
+- Codex runs matching handlers concurrently with no guaranteed completion order, and reports results in configured order
+  - Source: https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/hooks/src/engine/dispatcher.rs
+  - Date: undated (Codex source at rust-v0.162.1)
+  - Verdict: confirmed
+- Codex PreToolUse: any deny wins; competing input rewrites take the last to finish
+  - Source: https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/hooks/src/events/pre_tool_use.rs
+  - Date: undated (Codex source at rust-v0.162.1)
+  - Verdict: confirmed
+- Codex Stop: any block requests continuation, unless another hook returns `continue:false`, which ends the turn
+  - Source: https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/hooks/src/events/stop.rs
+  - Date: undated (Codex source at rust-v0.162.1)
+  - Verdict: confirmed
+- Codex waits for all matching synchronous hooks; `async: true` command hooks can't block, approve, rewrite or continue, at most 8 run in the background per session, and they're cancelled at shutdown
+  - Source: https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/hooks/src/engine/command_runner.rs, https://learn.chatgpt.com/docs/hooks#run-hooks-in-the-background
+  - Date: undated (Codex source at rust-v0.162.1)
+  - Verdict: confirmed
+- Codex default hook timeout is 600s, minimum 1s, with no app-level max; a timeout on PreToolUse, PostToolUse or Stop fails open
+  - Source: https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/hooks/src/engine/discovery.rs
+  - Date: undated (Codex source at rust-v0.162.1)
+  - Verdict: confirmed
+- Codex appends hooks from every config layer and does not dedupe identical commands, so global plus repo runs twice
+  - Source: https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/hooks/src/engine/discovery.rs
+  - Date: undated (Codex source at rust-v0.162.1)
+  - Verdict: confirmed
+- Codex hook trust is keyed by config source path, event and indices, and must match a hash of the normalised hook definition (command, matcher, timeout), so a changed Nix store path needs re-trust
+  - Source: https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/hooks/src/lib.rs, discovery.rs
+  - Date: undated (Codex source at rust-v0.162.1)
+  - Verdict: confirmed
+- Codex: exit 0 with `{}` or empty stdout passes Stop and PostToolUse; `{"continue": true}` is optional
+  - Source: https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/hooks/src/schema.rs
+  - Date: undated (Codex source at rust-v0.162.1)
+  - Verdict: confirmed; contradicts SHA-200's premise that a passing Stop needs `{"continue": true}`
+- Codex: Stop and PostToolUse block with `{"decision":"block","reason":...}` or exit 2; Stop has no `additionalContext`; PostToolUse context goes in `hookSpecificOutput.additionalContext`
+  - Source: https://github.com/openai/codex/blob/rust-v0.162.1/codex-rs/hooks/src/events/post_tool_use.rs, stop.rs
+  - Date: undated (Codex source at rust-v0.162.1)
+  - Verdict: confirmed
+- Codex publishes no startup-cost guidance
+  - Source: Codex docs and source
+  - Date: undated (Codex source at rust-v0.162.1)
+  - Verdict: confirmed (absence)
+- Claude Code runs all matching hooks for an event in parallel; the same handler in several settings files runs once
+  - Source: https://code.claude.com/docs/en/hooks
+  - Date: undated (fetched 2026-10-16)
+  - Verdict: confirmed; what counts as "the same handler" is undefined
+- Claude Code merges hook entries across user, project, local and managed settings
+  - Source: https://code.claude.com/docs/en/hooks, https://code.claude.com/docs/en/settings-reference
+  - Date: undated
+  - Verdict: confirmed
+- Claude Code hooks block until done unless `async: true`; async hooks can't block, and their context arrives next turn
+  - Source: https://code.claude.com/docs/en/hooks
+  - Date: undated
+  - Verdict: confirmed
+- Claude Code async hooks existed by v2.1.23
+  - Source: https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
+  - Date: 2026-01-29
+  - Verdict: confirmed
+- Claude Code command hook default timeout is 600s (30s on UserPromptSubmit)
+  - Source: https://code.claude.com/docs/en/hooks
+  - Date: undated
+  - Verdict: confirmed
+- The tool-hook timeout was 60s
+  - Source: https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md
+  - Date: 2026-01-09
+  - Verdict: superseded: v2.1.3 raised it to 10 minutes
+- A timed-out Claude Code PreToolUse hook does not block the call unless `onFailure: "block"` is set (v2.1.295+)
+  - Source: https://code.claude.com/docs/en/hooks
+  - Date: undated
+  - Verdict: confirmed
+- Claude Code documents no maximum hook timeout
+  - Source: https://code.claude.com/docs/en/hooks
+  - Date: undated
+  - Verdict: unconfirmed (absence in docs)
+- Claude Code PreToolUse precedence is deny > defer > ask > allow; exit 2 blocks
+  - Source: https://code.claude.com/docs/en/hooks
+  - Date: undated
+  - Verdict: confirmed
+- Claude Code Stop: `decision: "block"` with a reason, or exit 2, keeps Claude going; `additionalContext` does too, shown as Stop hook feedback; capped at 8 consecutive continuations
+  - Source: https://code.claude.com/docs/en/hooks
+  - Date: undated
+  - Verdict: confirmed
+- Claude Code PostToolUse: `decision: "block"` adds the reason beside the result; `additionalContext` adds context; `updatedToolOutput` replaces the output
+  - Source: https://code.claude.com/docs/en/hooks
+  - Date: undated
+  - Verdict: confirmed
+- Claude Code caps `additionalContext`, `systemMessage` and stdout at 10,000 characters
+  - Source: https://code.claude.com/docs/en/hooks
+  - Date: undated
+  - Verdict: confirmed
+- Claude Code's only performance guidance is "keep these hooks fast" on SessionStart and MessageDisplay, plus the `if` filter to skip spawning; `--debug` logs hook durations from v2.1.296
+  - Source: https://code.claude.com/docs/en/hooks, CHANGELOG 2.1.296
+  - Date: 2026-10-09
+  - Verdict: confirmed
+- Claude Code exec-form hooks (`command` + `args`) spawn the executable with no shell
+  - Source: https://code.claude.com/docs/en/hooks
+  - Date: undated
+  - Verdict: confirmed
+- Claude Code has native `http` and `mcp_tool` hook types; Codex has `mcp_tool` hooks over an existing MCP connection
+  - Source: https://code.claude.com/docs/en/hooks, https://developers.openai.com/codex/hooks
+  - Date: undated
+  - Verdict: confirmed
+- Claude Code issue 39391 proposes a persistent hook daemon, citing about 4s per session for 15+ hooks
+  - Source: https://github.com/anthropics/claude-code/issues/39391
+  - Date: 2026-03-26
+  - Verdict: confirmed as a proposal; stale
+- Claude Code issue 19627 reports a multi-second delay before a Notification hook whose script takes 15–27ms
+  - Source: https://github.com/anthropics/claude-code/issues/19627
+  - Date: 2026-01
+  - Verdict: unconfirmed (user report)
+- karanb192's guard-pack runs seven guards in one Node process at about 35ms per call
+  - Source: https://github.com/karanb192/claude-code-hooks
+  - Date: undated
+  - Verdict: confirmed as the project's claim
+- clooks (a persistent HTTP daemon) cuts 34.6ms to 0.31ms per call, but needs a launchd/systemd service, auto-disables handlers after 3 failures, and hot-reloads
+  - Source: https://github.com/mauribadnights/clooks
+  - Date: undated
+  - Verdict: confirmed as the project's claim (2 stars)
+- Edmonds' hooks daemon forwards from a shell script per event to a per-project Python daemon over a Unix socket; it starts on first use, idles out after 10 minutes, and checks its version on SessionStart
+  - Source: https://edmondscommerce.co.uk/articles/claude-code-hooks-daemon
+  - Date: undated
+  - Verdict: confirmed as the project's description
+- claude-mem uses a compiled launcher (~10ms) that forwards to an auto-started HTTP worker; hooks average 5–45ms
+  - Source: https://docs.claude-mem.ai/hooks-architecture
+  - Date: undated
+  - Verdict: confirmed as the project's measurements
+- disler/claude-code-hooks-mastery runs every hook through `uv run`, with no latency published
+  - Source: https://github.com/disler/claude-code-hooks-mastery
+  - Date: undated
+  - Verdict: confirmed
+- `uv run` locks and syncs before every invocation unless `--frozen` or `--no-sync`
+  - Source: https://docs.astral.sh/uv/concepts/projects/sync
+  - Date: undated
+  - Verdict: confirmed
+- lefthook is sequential unless `parallel: true`; hk finds per-tool startup dominates and is 1.6x faster than lefthook on its workload
+  - Source: https://lefthook.dev/configuration/parallel, https://hk.jdx.dev/benchmarks.html
+  - Date: undated
+  - Verdict: confirmed as the projects' claims
+- CPython `-I` implies `-E -P -s` but not `-S`; `-X importtime` reports per-import cost
+  - Source: https://docs.python.org/3/using/cmdline.html
+  - Date: undated
+  - Verdict: confirmed
+- PEP 810 explicit lazy imports is Final and shipped in Python 3.15.0
+  - Source: https://peps.python.org/pep-0810/, https://docs.python.org/3/whatsnew/3.15.html
+  - Date: 2026-10-09
+  - Verdict: confirmed; claws' Nix python is 3.14.7
+- Lazy imports took `pypistats --help` from 104ms to 36ms
+  - Source: https://hugovk.dev/blog/2025/lazy-imports
+  - Date: 2025-10-19
+  - Verdict: confirmed as the author's measurement
+- claws' installed dangerous-commands path costs about 46ms p50 above bare `python3 -I` (bare ≈11.5ms), steady across three runs
+  - Source: local measurement, N=20, interleaved
+  - Date: 2026-10-16
+  - Verdict: measured
+- A lean path (hand-parsed argv, only the named adapter and bap imported, no dataclasses, typing, pathlib or discovery, no bash wrapper) brings dangerous-commands to about 14ms p50 above bare
+  - Source: local prototype in /tmp/claws-lean
+  - Date: 2026-10-16
+  - Verdict: measured
+- A do-nothing bap on the lean path costs about 4.5ms p50 above bare; `-S` saves only ~0.3ms more
+  - Source: local prototype
+  - Date: 2026-10-16
+  - Verdict: measured
+- About 9.4ms of dangerous-commands' lean cost is compiling its regexes on every call, ~5.4ms of that from gluing the shell prefix pattern onto each command-scope rule
+  - Source: local prototype
+  - Date: 2026-10-16
+  - Verdict: measured
+- Today every `claws-bap` call imports every bap through registry discovery
+  - Source: claws source, `registry.discover()`
+  - Date: 2026-10-16
+  - Verdict: confirmed
+
+## Gaps
+
+- What Claude Code counts as "the same handler" for dedupe across settings files. The docs don't say, and the npm package ships only binaries.
+- How several blocking Stop or PostToolUse hooks combine on Claude Code.
+- No Python stdlib hook project publishes per-call numbers, so the lean-path numbers above come only from the local prototype.
+- None of the other projects' benchmarks was rerun.

@@ -43,7 +43,7 @@ The baps a consumer has chosen to enable, with their options, for one or more ha
 _Avoid_: selection, profile, bundle
 
 **Scope**:
-Where a bap set is declared: global, in home-manager, or repo, in that repo's flake. A bap on in both scopes runs once, with the repo layered over global.
+Where a bap set is declared: global, in home-manager, or repo, in that repo's flake. Scopes don't merge: each runs its own bap set with its own options, so a bap on in both scopes runs twice, and a deny from either wins.
 _Avoid_: context, layer, level
 
 **Wiring**:
@@ -75,7 +75,7 @@ _Avoid_: pack, category, ruleset, preset
 ## Performance
 
 **Budget**:
-The most time a bap may spend on one event beyond bare Python startup, declared by the bap itself.
+The most a bap may cost on one event beyond bare Python startup, declared by the bap itself as a multiple of that startup. It counts everything claws does on the bap's behalf, not just the bap's own work.
 _Avoid_: limit, SLA, timeout (the harness's kill switch is a separate thing)
 
 **Bench**:
