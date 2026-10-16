@@ -41,14 +41,6 @@
         default = claws;
       });
 
-      apps = forAll (pkgs: {
-        install = {
-          type = "app";
-          program = "${self.packages.${pkgs.stdenv.hostPlatform.system}.claws}/bin/claws-install";
-        };
-        default = self.apps.${pkgs.stdenv.hostPlatform.system}.install;
-      });
-
       homeManagerModules = rec {
         claws =
           { pkgs, ... }@args:

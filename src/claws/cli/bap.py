@@ -38,7 +38,7 @@ def respond(
     spec = registry.get(bap)
     adapter = adapters.get(harness)
     event = adapter.parse(payload)
-    options = config.for_bap(bap, spec.options(), explicit_config, event.cwd)
+    options = config.for_bap(bap, spec.options(), explicit_config)
     decision = spec.run(event, options)
     if decision.action == "deny":
         log(
