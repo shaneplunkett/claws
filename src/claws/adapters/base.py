@@ -6,6 +6,8 @@ from typing import ClassVar
 from ..core.events import Decision, Event, ToolClass
 from ..core.jsontypes import HookResponse, HookSpecificOutput, Json, JsonObject
 
+BLOCK_REASON = "🐾 a claws bap blocked this without saying why"
+
 
 class Adapter:
     """Base adapter. Subclasses set the tool-name tables and override parse_tool."""
@@ -50,7 +52,16 @@ class Adapter:
         return "other", None, []
 
     def render(self, decision: Decision, event: Event) -> HookResponse:
-        """Both harnesses speak the same response dialect. Override if one drifts."""
+        """Claude Code's response dialect, which Codex mostly shares. Overrides handle drift.
+
+        Per https://code.claude.com/docs/en/hooks (checked 2026-10-16):
+        - PreToolUse: hookSpecificOutput.permissionDecision allow or deny, with a reason.
+        - Stop: {"decision": "block", "reason"} keeps Claude going with the reason as
+          feedback; hookSpecificOutput.additionalContext does too.
+        - PostToolUse: {"decision": "block", "reason"} puts the reason beside the tool
+          result; hookSpecificOutput.additionalContext adds context.
+        - A pass is {}. Neither harness needs {"continue": true}.
+        """
         if decision.action == "none" and not decision.context:
             return {}
         out: HookResponse = {}
@@ -60,10 +71,11 @@ class Adapter:
             if decision.reason:
                 specific["permissionDecisionReason"] = decision.reason
         elif decision.action == "deny":
-            # Outside PreToolUse the only hard stop is the top-level decision.
+            # Outside PreToolUse the only hard stop is the top-level decision. Codex treats a
+            # block with a blank reason as invalid output and passes, so there is always one.
             out["decision"] = "block"
-            if decision.reason:
-                out["reason"] = decision.reason
+            reason = decision.reason
+            out["reason"] = reason if reason and reason.strip() else BLOCK_REASON
         if decision.context:
             specific["additionalContext"] = decision.context
         if len(specific) > 1:
