@@ -4,7 +4,7 @@
 #   programs.claws = {
 #     enable = true;
 #     harnesses = [ "claude" "codex" ];
-#     bap.dangerous-commands = { enable = true; level = "high"; ask = true; };
+#     bap.dangerous-commands = { enable = true; level = "high"; };
 #   };
 #
 # Bap options other than `enable` are passed through to the bap as its

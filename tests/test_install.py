@@ -20,12 +20,12 @@ def test_install_writes_all_three_files(tmp_path: Path) -> None:
             "--set",
             "dangerous-commands.level=medium",
             "--set",
-            "dangerous-commands.ask=true",
+            'dangerous-commands.disable=["git-reset-hard"]',
         ]
     )
     assert rc == 0
     m = json.loads((tmp_path / ".claws.json").read_text())
-    assert m == {"baps": {"dangerous-commands": {"level": "medium", "ask": True}}}
+    assert m == {"baps": {"dangerous-commands": {"level": "medium", "disable": ["git-reset-hard"]}}}
     for rel in (".claude/settings.local.json", ".codex/hooks.json"):
         data = json.loads((tmp_path / rel).read_text())
         cmd = data["hooks"]["PreToolUse"][0]["hooks"][0]["command"]

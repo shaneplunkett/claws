@@ -12,7 +12,7 @@ from typing import Literal
 from .jsontypes import JsonObject
 
 ToolClass = Literal["shell", "edit", "other"]
-Action = Literal["allow", "deny", "ask", "none"]
+Action = Literal["allow", "deny", "none"]
 
 
 @dataclass(frozen=True)
@@ -28,11 +28,6 @@ class Event:
     permission_mode: str | None = None  # e.g. default, acceptEdits, bypassPermissions, dontAsk
     raw: JsonObject = field(default_factory=dict, compare=False, repr=False)
 
-    @property
-    def unattended(self) -> bool:
-        """True when the harness will not put a question in front of a human."""
-        return self.permission_mode in ("bypassPermissions", "dontAsk")
-
 
 @dataclass(frozen=True)
 class Decision:
@@ -47,10 +42,6 @@ class Decision:
     @classmethod
     def deny(cls, reason: str) -> Decision:
         return cls("deny", reason)
-
-    @classmethod
-    def ask(cls, reason: str) -> Decision:
-        return cls("ask", reason)
 
     @classmethod
     def none(cls) -> Decision:

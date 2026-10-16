@@ -347,23 +347,20 @@ class TestDecision:
         ev = Event(harness="claude", kind="PreToolUse", tool="other", raw_tool_name="WebFetch")
         assert paws.run(ev, OPTS).action == "none"
 
-    def test_ask_true_asks_for_high_but_still_denies_critical(self) -> None:
-        opts: JsonObject = {**OPTS, "ask": True}
-        assert paws.run(shell("git reset --hard"), opts).action == "ask"
-        assert paws.run(shell("rm -rf /"), opts).action == "deny"
+    def test_high_denies_at_default_level_in_every_permission_mode(self) -> None:
+        for mode in ("default", "acceptEdits", "plan", "bypassPermissions", "dontAsk", None):
+            ev = Event(
+                harness="claude",
+                kind="PreToolUse",
+                tool="shell",
+                command="git reset --hard",
+                permission_mode=mode,
+            )
+            assert paws.run(ev, {}).action == "deny", mode
 
-    def test_ask_list(self) -> None:
-        opts: JsonObject = {**OPTS, "level": "low", "ask": ["low", "medium"]}
-        assert paws.run(shell("rm -rf build"), opts).action == "ask"
-        assert paws.run(shell("git stash drop"), opts).action == "ask"
-        assert paws.run(shell("git reset --hard"), opts).action == "deny"
-
-    def test_deny_list_can_be_emptied(self) -> None:
-        opts: JsonObject = {**OPTS, "ask": True, "deny": []}
-        assert paws.run(shell("rm -rf /"), opts).action == "ask"
-
-    def test_ask_becomes_deny_when_unattended(self) -> None:
-        opts: JsonObject = {**OPTS, "ask": True}
+    def test_retired_ask_options_are_ignored(self) -> None:
+        # Old configs may still set these. Rejecting them would fail closed on every command.
+        opts: JsonObject = {**OPTS, "ask": True, "deny": [], "unattended": "allow"}
         ev = Event(
             harness="claude",
             kind="PreToolUse",
@@ -373,56 +370,8 @@ class TestDecision:
         )
         d = paws.run(ev, opts)
         assert d.action == "deny"
-        assert d.reason is not None and "bypassPermissions" in d.reason
-        ev = Event(
-            harness="claude",
-            kind="PreToolUse",
-            tool="shell",
-            command="git reset --hard",
-            permission_mode="dontAsk",
-        )
-        assert paws.run(ev, opts).action == "deny"
-
-    def test_ask_still_asks_when_attended(self) -> None:
-        opts: JsonObject = {**OPTS, "ask": True}
-        for mode in ("default", "acceptEdits", "plan", "auto", None):
-            ev = Event(
-                harness="claude",
-                kind="PreToolUse",
-                tool="shell",
-                command="git reset --hard",
-                permission_mode=mode,
-            )
-            assert paws.run(ev, opts).action == "ask", mode
-
-    def test_unattended_allow_and_ask(self) -> None:
-        ev = Event(
-            harness="claude",
-            kind="PreToolUse",
-            tool="shell",
-            command="git reset --hard",
-            permission_mode="bypassPermissions",
-        )
-        assert paws.run(ev, {**OPTS, "ask": True, "unattended": "allow"}).action == "none"
-        assert paws.run(ev, {**OPTS, "ask": True, "unattended": "ask"}).action == "ask"
-
-    def test_unattended_does_not_soften_deny(self) -> None:
-        ev = Event(
-            harness="claude",
-            kind="PreToolUse",
-            tool="shell",
-            command="rm -rf /",
-            permission_mode="bypassPermissions",
-        )
-        assert paws.run(ev, {**OPTS, "ask": True, "unattended": "allow"}).action == "deny"
-
-    def test_bad_unattended(self) -> None:
-        with pytest.raises(ValueError):
-            paws.run(shell("git reset --hard"), {**OPTS, "unattended": "maybe"})
-
-    def test_bad_ask_level(self) -> None:
-        with pytest.raises(ValueError):
-            paws.run(shell("git reset --hard"), {**OPTS, "ask": ["nope"]})
+        assert d.reason is not None and "git-reset-hard" in d.reason
+        assert paws.run(shell("ls"), opts).action == "none"
 
 
 class TestCustomisation:

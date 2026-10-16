@@ -101,10 +101,7 @@
             let
               cfg = self.lib.project {
                 inherit pkgs;
-                bap.dangerous-commands = {
-                  level = "medium";
-                  ask = true;
-                };
+                bap.dangerous-commands.level = "medium";
               };
               bad =
                 builtins.tryEval
@@ -168,7 +165,6 @@
                       bap.dangerous-commands = {
                         enable = true;
                         level = "high";
-                        ask = true;
                       };
                       wire.codex = false;
                     };
@@ -189,10 +185,7 @@
                 && pkgs.lib.all (a: a.assertion) c.assertions
                 &&
                   builtins.fromJSON (builtins.readFile c.programs.claws.configFile) == {
-                    baps.dangerous-commands = {
-                      level = "high";
-                      ask = true;
-                    };
+                    baps.dangerous-commands.level = "high";
                   };
             in
             assert ok;
@@ -205,7 +198,7 @@
         let
           own = self.lib.project {
             inherit pkgs;
-            bap.dangerous-commands.ask = true;
+            bap.dangerous-commands = { };
           };
         in
         {

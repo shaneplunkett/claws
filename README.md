@@ -43,7 +43,7 @@ imports = [ inputs.claws.homeManagerModules.default ];
 programs.claws = {
   enable = true;
   harnesses = [ "claude" "codex" ];
-  bap.dangerous-commands = { enable = true; level = "high"; ask = true; };
+  bap.dangerous-commands = { enable = true; level = "high"; };
 };
 ```
 
@@ -54,7 +54,7 @@ let
   clawsCfg = inputs.claws.lib.project {
     inherit pkgs;
     harnesses = [ "claude" "codex" ];
-    bap.dangerous-commands = { level = "high"; ask = true; };
+    bap.dangerous-commands = { level = "high"; };
   };
 in {
   devShells.default = pkgs.mkShell { shellHook = clawsCfg.shellHook; };
@@ -67,7 +67,7 @@ Entering the dev shell syncs `.claude/settings.local.json` and `.codex/hooks.jso
 Ad hoc, without a flake:
 
 ```sh
-nix run github:shaneplunkett/claws#install -- --harness claude,codex --baps dangerous-commands --set dangerous-commands.ask=true
+nix run github:shaneplunkett/claws#install -- --harness claude,codex --baps dangerous-commands --set dangerous-commands.level=medium
 ```
 
 That writes a committable `.claws.json` with the chosen baps and options, then the same two harness files pointing at it.
