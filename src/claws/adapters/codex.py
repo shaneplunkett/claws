@@ -9,7 +9,9 @@ from .base import Adapter, command_string, edit_paths
 
 # apply_patch headers: "*** Update File: path", "*** Add File: path", "*** Delete File: path",
 # "*** Move to: path"
-_PATCH_PATH = re.compile(r"^\*\*\* (?:Add|Update|Delete) File: (.+)$|^\*\*\* Move to: (.+)$", re.MULTILINE)
+_PATCH_PATH = re.compile(
+    r"^\*\*\* (?:Add|Update|Delete) File: (.+)$|^\*\*\* Move to: (.+)$", re.MULTILINE
+)
 
 
 class CodexAdapter(Adapter):
@@ -19,14 +21,18 @@ class CodexAdapter(Adapter):
     with the whole patch in tool_input.command."""
 
     name = "codex"
-    shell_tools = frozenset({"Bash", "exec_command", "functions.exec_command", "shell", "local_shell"})
+    shell_tools = frozenset(
+        {"Bash", "exec_command", "functions.exec_command", "shell", "local_shell"}
+    )
     edit_tools = frozenset({"apply_patch", "Edit", "Write", "MultiEdit"})
     matchers: ClassVar[dict[str, str]] = {
         "shell": "Bash|exec_command|functions.exec_command|shell|local_shell",
         "edit": "apply_patch|Edit|Write|MultiEdit",
     }
 
-    def parse_tool(self, raw_tool: str | None, tool_input: Json) -> tuple[ToolClass | None, str | None, list[str]]:
+    def parse_tool(
+        self, raw_tool: str | None, tool_input: Json
+    ) -> tuple[ToolClass | None, str | None, list[str]]:
         if raw_tool == "apply_patch":
             patch = command_string(tool_input) or ""
             paths = [a or b for a, b in _PATCH_PATH.findall(patch)]

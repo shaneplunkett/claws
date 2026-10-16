@@ -32,7 +32,9 @@ def log(bap: str, record: JsonObject) -> None:
         pass
 
 
-def respond(bap: str, harness: str, payload: JsonObject, explicit_config: str | None) -> HookResponse:
+def respond(
+    bap: str, harness: str, payload: JsonObject, explicit_config: str | None
+) -> HookResponse:
     spec = registry.get(bap)
     adapter = adapters.get(harness)
     event = adapter.parse(payload)
@@ -75,10 +77,14 @@ def main(argv: list[str] | None = None) -> int:
         log(args.bap, {"harness": args.harness, "action": "error", "error": str(exc)})
         if spec is not None and spec.fail_closed:
             kind = payload.get("hook_event_name") if isinstance(payload, dict) else None
-            event = Event(harness=args.harness, kind=kind if isinstance(kind, str) else "PreToolUse")
+            event = Event(
+                harness=args.harness, kind=kind if isinstance(kind, str) else "PreToolUse"
+            )
             # Both harnesses speak the base dialect, so an unknown harness still gets a deny.
             adapter = adapters.ADAPTERS.get(args.harness, adapters.Adapter())
-            out = adapter.render(Decision.deny(f"🐾 {args.bap} crashed ({exc}); blocking to be safe"), event)
+            out = adapter.render(
+                Decision.deny(f"🐾 {args.bap} crashed ({exc}); blocking to be safe"), event
+            )
         else:
             out = {}
     print(json.dumps(out))

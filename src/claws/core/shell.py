@@ -33,7 +33,8 @@ PREFIXES = re.compile(r"^(?:" + PREFIX + r"\s+)*")
 COMMAND_PATH = r"(?:\S*/)?"
 
 _HEREDOC = re.compile(
-    r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1([^\n]*)\n(.*?)(?:^|\n)\s*\2\s*(?=\n|$)", re.DOTALL | re.MULTILINE
+    r"<<-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1([^\n]*)\n(.*?)(?:^|\n)\s*\2\s*(?=\n|$)",
+    re.DOTALL | re.MULTILINE,
 )
 _SHELLS = frozenset({"bash", "sh", "zsh", "dash", "ksh", "fish"})
 
@@ -171,7 +172,8 @@ def _carrier_inner(tokens: list[str]) -> list[str]:
         while j < len(rest) and rest[j].startswith("-"):
             j += (
                 2
-                if rest[j] in ("-i", "-p", "-l", "-o", "-F", "-J", "-L", "-R", "-D", "-W") and len(rest[j]) == 2
+                if rest[j] in ("-i", "-p", "-l", "-o", "-F", "-J", "-L", "-R", "-D", "-W")
+                and len(rest[j]) == 2
                 else 1
             )
         inner = rest[j + 1 :]

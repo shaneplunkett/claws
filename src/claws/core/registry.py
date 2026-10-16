@@ -44,7 +44,8 @@ def discover() -> dict[str, Bap]:
             raise TypeError(f"claws.baps.{info.name} must expose BAP: Bap")
         if bap.name != info.name.replace("_", "-"):
             raise ValueError(
-                f"claws.baps.{info.name} declares name {bap.name!r}; expected {info.name.replace('_', '-')!r}"
+                f"claws.baps.{info.name} declares name {bap.name!r}; "
+                f"expected {info.name.replace('_', '-')!r}"
             )
         found[bap.name] = bap
     return dict(sorted(found.items()))

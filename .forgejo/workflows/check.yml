@@ -1,0 +1,8 @@
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    uses: shane/workflows/.forgejo/workflows/check.yml@v1.4.0

@@ -33,7 +33,9 @@ def test_env_config_file(tmp_path: Path) -> None:
 
 def test_project_config_found_from_cwd(tmp_path: Path) -> None:
     (tmp_path / ".git").mkdir()
-    (tmp_path / ".claws.json").write_text(json.dumps({"baps": {"dangerous-commands": {"disable": ["git-reset-hard"]}}}))
+    (tmp_path / ".claws.json").write_text(
+        json.dumps({"baps": {"dangerous-commands": {"disable": ["git-reset-hard"]}}})
+    )
     sub = tmp_path / "a" / "b"
     sub.mkdir(parents=True)
     out, _ = run_cli(
@@ -44,7 +46,9 @@ def test_project_config_found_from_cwd(tmp_path: Path) -> None:
 
 
 def test_project_config_stops_at_git_root(tmp_path: Path) -> None:
-    (tmp_path / ".claws.json").write_text(json.dumps({"baps": {"dangerous-commands": {"disable": ["git-reset-hard"]}}}))
+    (tmp_path / ".claws.json").write_text(
+        json.dumps({"baps": {"dangerous-commands": {"disable": ["git-reset-hard"]}}})
+    )
     repo = tmp_path / "repo"
     (repo / ".git").mkdir(parents=True)
     out, _ = run_cli(
@@ -56,7 +60,9 @@ def test_project_config_stops_at_git_root(tmp_path: Path) -> None:
 
 def test_layers_merge_lists_and_override_scalars(tmp_path: Path) -> None:
     glob = tmp_path / "g.json"
-    glob.write_text(json.dumps({"baps": {"dangerous-commands": {"level": "medium", "allow": ["^a$"]}}}))
+    glob.write_text(
+        json.dumps({"baps": {"dangerous-commands": {"level": "medium", "allow": ["^a$"]}}})
+    )
     (tmp_path / ".git").mkdir()
     (tmp_path / ".claws.json").write_text(
         json.dumps({"baps": {"dangerous-commands": {"level": "low", "allow": ["^b$"]}}})
@@ -76,4 +82,6 @@ def test_merge_nested_objects() -> None:
 def test_missing_section_is_fine(tmp_path: Path) -> None:
     cfg = tmp_path / "c.json"
     cfg.write_text(json.dumps({"baps": {"other": {"x": 1}}}))
-    assert config.for_bap("dangerous-commands", {"level": "high"}, str(cfg), None) == {"level": "high"}
+    assert config.for_bap("dangerous-commands", {"level": "high"}, str(cfg), None) == {
+        "level": "high"
+    }

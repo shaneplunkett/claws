@@ -21,7 +21,13 @@ def test_names_sorted() -> None:
 def test_every_bap_is_well_formed() -> None:
     for name, bap in registry.discover().items():
         assert bap.name == name
-        assert bap.event in {"PreToolUse", "PostToolUse", "SessionStart", "UserPromptSubmit", "Stop"}
+        assert bap.event in {
+            "PreToolUse",
+            "PostToolUse",
+            "SessionStart",
+            "UserPromptSubmit",
+            "Stop",
+        }
         assert set(bap.tools) <= {"shell", "edit"}
         assert bap.timeout > 0
         assert callable(bap.run)

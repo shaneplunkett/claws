@@ -77,33 +77,6 @@
         {
           inherit claws;
 
-          lint =
-            pkgs.runCommand "claws-lint"
-              {
-                nativeBuildInputs = [
-                  pkgs.nixfmt
-                  pkgs.statix
-                  pkgs.deadnix
-                  pkgs.ruff
-                  (pkgs.python3.withPackages (p: [
-                    p.mypy
-                    p.pytest
-                  ]))
-                ];
-              }
-              ''
-                cd ${self}
-                nixfmt --check flake.nix nix/*.nix src/claws/baps/*/bap.nix
-                statix check .
-                deadnix --fail .
-                export RUFF_CACHE_DIR=$TMPDIR/ruff
-                ruff check src tests conftest.py
-                ruff format --check src tests conftest.py
-                export MYPY_CACHE_DIR=$TMPDIR/mypy
-                mypy --strict src tests conftest.py
-                touch $out
-              '';
-
           # Each bap.nix and nix/lib.nix must render exactly what Python renders.
           manifest-sync =
             pkgs.runCommand "claws-manifest-sync"
@@ -238,24 +211,46 @@
         {
           default = pkgs.mkShell {
             packages = [
-              (pkgs.python3.withPackages (p: [
-                p.pytest
-                p.ruff
-                p.mypy
-              ]))
+              pkgs.git
+              pkgs.pre-commit
+              pkgs.python3
+              pkgs.uv
+              pkgs.ruff
               pkgs.nixfmt
               pkgs.statix
               pkgs.deadnix
               pkgs.jq
             ];
+
+            # Installs the git hook on first entry, so fresh clones get it too.
+            # Then syncs claws' own baps into this repo.
             shellHook = ''
-              export PYTHONPATH=$PWD/src
+              if hook="$(git rev-parse --git-path hooks/pre-commit 2>/dev/null)" && [ ! -e "$hook" ]; then
+                pre-commit install >/dev/null || true
+              fi
+              unset hook
               ${own.shellHook}
             '';
           };
         }
       );
 
-      formatter = forAll (pkgs: pkgs.nixfmt);
+      # `nix fmt` passes no paths, so the formatter finds its own files.
+      formatter = forAll (
+        pkgs:
+        pkgs.writeShellApplication {
+          name = "format";
+          runtimeInputs = [
+            pkgs.git
+            pkgs.nixfmt
+            pkgs.ruff
+          ];
+          text = ''
+            cd "$(git rev-parse --show-toplevel)"
+            git ls-files --cached --others --exclude-standard -z '*.nix' | xargs -0 -r nixfmt
+            ruff format .
+          '';
+        }
+      );
     };
 }

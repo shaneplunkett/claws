@@ -70,7 +70,9 @@ class Rule:
 
     def regex(self) -> re.Pattern[str]:
         if self.scope == "command":
-            return re.compile(shell.PREFIXES.pattern + shell.COMMAND_PATH + "(?:" + self.pattern + ")", re.DOTALL)
+            return re.compile(
+                shell.PREFIXES.pattern + shell.COMMAND_PATH + "(?:" + self.pattern + ")", re.DOTALL
+            )
         return re.compile(self.pattern, re.DOTALL)
 
 
@@ -78,66 +80,233 @@ _DEV = (
     r"/dev/(sd[a-z]+|nvme\d+(n\d+)?|hd[a-z]+|vd[a-z]+|xvd[a-z]+|mmcblk\d+|disk\d+|mapper/\S+|md\d+|dm-\d+|loop\d+"
     r"|nbd\d+|rbd\d+|zd\d+|disk/by-(id|uuid|path|label|partuuid|partlabel)/\S+)"
 )
-# The files, and the directories that hold them: renaming .codex away disables the hooks just as well.
-_HOOK_FILES = r"(\.claws\.json|\.claude(/settings(\.local)?\.json)?|\.codex(/(hooks\.json|config\.toml))?)"
+# The files, and the directories that hold them: renaming .codex away disables the hooks
+# just as well.
+_HOOK_FILES = (
+    r"(\.claws\.json|\.claude(/settings(\.local)?\.json)?|\.codex(/(hooks\.json|config\.toml))?)"
+)
 _SYSTEM_DIRS = r"(etc|usr|var|bin|sbin|lib|lib64|boot|dev|proc|sys|nix|opt|home|root|srv)"
 # git's global options sit between `git` and the subcommand: git -C repo --no-pager push ...
-_GIT = r"git\s+(?:(?:-C|-c|--git-dir|--work-tree|--namespace|--exec-path)\s+\S+\s+|--?[\w-]+(?:=\S*)?\s+)*"
-_PVE_VERBS = r"(create|destroy|start|stop|shutdown|reboot|reset|suspend|resume|migrate|clone|set|resize|importdisk|move_disk|move-disk|disk\s+move|delsnapshot|rollback|template)"
+_GIT = (
+    r"git\s+(?:(?:-C|-c|--git-dir|--work-tree|--namespace|--exec-path)\s+\S+\s+"
+    r"|--?[\w-]+(?:=\S*)?\s+)*"
+)
+_PVE_VERBS = (
+    r"(create|destroy|start|stop|shutdown|reboot|reset|suspend|resume|migrate|clone|set|resize"
+    r"|importdisk|move_disk|move-disk|disk\s+move|delsnapshot|rollback|template)"
+)
 
-# fmt: off
 BUILTIN: tuple[Rule, ...] = (
     # Rules default to scope "command": anchored at the command word of each simple command
     # (sudo, env, timeout and friends allowed in front), after unquoting. Prose in a quoted
     # argument of some other command cannot match. See core/shell.py.
     #
     # critical: unrecoverable
-    Rule("rm-home", "critical", r"rm\s+(-\S+\s+)*(\S+\s+)*(~/?|\$HOME/?|\$\{HOME\}/?)(\s|$)", "rm targeting the home directory"),
-    Rule("rm-root", "critical", r"rm\s+(-\S+\s+)*(\S+\s+)*/(\*|\s|$)", "rm targeting the root filesystem"),
-    Rule("rm-system", "critical", r"rm\s+(-\S+\s+)*(\S+\s+)*/" + _SYSTEM_DIRS + r"(/|\s|$)", "rm targeting a system directory"),
-    Rule("rm-cwd", "critical", r"rm\s+(-\S+\s+)*(\S+\s+)*(\./?|\*|\./\*)(\s|$)", "rm of the whole current directory"),
+    Rule(
+        "rm-home",
+        "critical",
+        r"rm\s+(-\S+\s+)*(\S+\s+)*(~/?|\$HOME/?|\$\{HOME\}/?)(\s|$)",
+        "rm targeting the home directory",
+    ),
+    Rule(
+        "rm-root",
+        "critical",
+        r"rm\s+(-\S+\s+)*(\S+\s+)*/(\*|\s|$)",
+        "rm targeting the root filesystem",
+    ),
+    Rule(
+        "rm-system",
+        "critical",
+        r"rm\s+(-\S+\s+)*(\S+\s+)*/" + _SYSTEM_DIRS + r"(/|\s|$)",
+        "rm targeting a system directory",
+    ),
+    Rule(
+        "rm-cwd",
+        "critical",
+        r"rm\s+(-\S+\s+)*(\S+\s+)*(\./?|\*|\./\*)(\s|$)",
+        "rm of the whole current directory",
+    ),
     Rule("dd-disk", "critical", r"dd\b.*\bof=" + _DEV, "dd writing straight to a disk"),
     Rule("mkfs", "critical", r"mkfs(\.\w+)?\b.*" + _DEV, "formatting a disk"),
-    Rule("disk-redirect", "critical", r">\s*" + _DEV, "shell redirect onto a disk device", scope="segment"),
-    Rule("disk-write", "critical", r"(cp|tee|install)\s+(\S+\s+)*" + _DEV + r"(\s|$)", "writing a file straight onto a disk"),
-    Rule("find-delete", "high", r"find\s+.*\s(-delete|-exec\s+rm)\b", "find deleting what it matches"),
+    Rule(
+        "disk-redirect",
+        "critical",
+        r">\s*" + _DEV,
+        "shell redirect onto a disk device",
+        scope="segment",
+    ),
+    Rule(
+        "disk-write",
+        "critical",
+        r"(cp|tee|install)\s+(\S+\s+)*" + _DEV + r"(\s|$)",
+        "writing a file straight onto a disk",
+    ),
+    Rule(
+        "find-delete", "high", r"find\s+.*\s(-delete|-exec\s+rm)\b", "find deleting what it matches"
+    ),
     Rule("fork-bomb", "critical", r":\(\)\s*\{.*:\s*\|\s*:.*&", "fork bomb", scope="raw"),
-    Rule("chmod-system", "critical", r"(chmod|chown)\s+(\S+\s+)*(-\S*R\S*|--recursive)\b.*\s/(" + _SYSTEM_DIRS + r")?/?(\s|$)", "recursive chmod/chown of / or a system directory"),
+    Rule(
+        "chmod-system",
+        "critical",
+        r"(chmod|chown)\s+(\S+\s+)*(-\S*R\S*|--recursive)\b.*\s/(" + _SYSTEM_DIRS + r")?/?(\s|$)",
+        "recursive chmod/chown of / or a system directory",
+    ),
     Rule("zfs-destroy", "critical", r"(zfs|zpool)\s+destroy\b", "destroying a ZFS dataset or pool"),
-    Rule("disk-wipe", "critical", r"(lvremove|vgremove|pvremove|wipefs|blkdiscard)\b|sgdisk\b.*\s(-Z|--zap-all|-z|--zap|-o|--clear)\b|shred\b.*" + _DEV, "wiping a disk, volume or partition table"),
+    Rule(
+        "disk-wipe",
+        "critical",
+        r"(lvremove|vgremove|pvremove|wipefs|blkdiscard)\b|sgdisk\b.*\s(-Z|--zap-all|-z|--zap|-o|--clear)\b|shred\b.*"
+        + _DEV,
+        "wiping a disk, volume or partition table",
+    ),
     # high: data loss, bypassing process, infra changes outside the PR flow
-    Rule("curl-pipe-sh", "high", r"\b(curl|wget)\b.*\|\s*(sudo\s+)?(ba|z|da)?sh\b", "piping a download into a shell", scope="pipeline"),
-    Rule("git-force-main", "high", _GIT + r"push\b(?!.*--force-with-lease).*(--force|\s-f)\b.*\b(main|master)\b", "force push to main/master"),
-    Rule("git-push-main", "high", _GIT + r"push\b.*\b(origin|upstream)\s+(\S+:)?(main|master)\b|" + _GIT + r"push\b.*\bHEAD:(main|master)\b", "pushing straight to main/master, that is what PRs are for"),
-    Rule("git-delete-main", "high", _GIT + r"push\b.*(--delete\s+(main|master)\b|:refs/heads/(main|master)\b|\s:(main|master)(\s|$))|" + _GIT + r"update-ref\s+-d\s+refs/heads/(main|master)\b", "deleting main/master on the remote"),
-    Rule("git-reset-hard", "high", _GIT + r"reset\s+(-\S+\s+)*--hard\b", "git reset --hard throws away uncommitted work"),
-    Rule("git-clean-f", "high", _GIT + r"clean\s+(-\w*f|-f|--force)", "git clean -f deletes untracked files"),
-    Rule("git-branch-D", "high", _GIT + r"branch\s+(-\S+\s+)*(-D|--delete\s+--force|-d\s+-f)\b", "force deleting a branch"),
+    Rule(
+        "curl-pipe-sh",
+        "high",
+        r"\b(curl|wget)\b.*\|\s*(sudo\s+)?(ba|z|da)?sh\b",
+        "piping a download into a shell",
+        scope="pipeline",
+    ),
+    Rule(
+        "git-force-main",
+        "high",
+        _GIT + r"push\b(?!.*--force-with-lease).*(--force|\s-f)\b.*\b(main|master)\b",
+        "force push to main/master",
+    ),
+    Rule(
+        "git-push-main",
+        "high",
+        _GIT
+        + r"push\b.*\b(origin|upstream)\s+(\S+:)?(main|master)\b|"
+        + _GIT
+        + r"push\b.*\bHEAD:(main|master)\b",
+        "pushing straight to main/master, that is what PRs are for",
+    ),
+    Rule(
+        "git-delete-main",
+        "high",
+        _GIT
+        + r"push\b.*(--delete\s+(main|master)\b|:refs/heads/(main|master)\b"
+        + r"|\s:(main|master)(\s|$))|"
+        + _GIT
+        + r"update-ref\s+-d\s+refs/heads/(main|master)\b",
+        "deleting main/master on the remote",
+    ),
+    Rule(
+        "git-reset-hard",
+        "high",
+        _GIT + r"reset\s+(-\S+\s+)*--hard\b",
+        "git reset --hard throws away uncommitted work",
+    ),
+    Rule(
+        "git-clean-f",
+        "high",
+        _GIT + r"clean\s+(-\w*f|-f|--force)",
+        "git clean -f deletes untracked files",
+    ),
+    Rule(
+        "git-branch-D",
+        "high",
+        _GIT + r"branch\s+(-\S+\s+)*(-D|--delete\s+--force|-d\s+-f)\b",
+        "force deleting a branch",
+    ),
     Rule("chmod-777", "high", r"chmod\b.*\b777\b", "chmod 777"),
-    Rule("docker-volume-rm", "high", r"docker\s+volume\s+(rm|prune)\b|docker(-compose|\s+compose)\b.*\bdown\b.*(\s-v|--volumes)\b", "deleting docker volumes"),
-    Rule("terraform-apply", "high", r"(terraform|tofu)\s+(-\S+\s+)*(apply|destroy|import|taint|untaint|state\s+(rm|mv|push)|force-unlock)\b", "terraform/tofu changing real infra; that lands by PR"),
-    Rule("pve-mutate", "high", r"(qm|pct|pvesh|pvesm|pvecm|pveum)\s+(-\S+\s+)*" + _PVE_VERBS + r"\b|pvesh\s+(create|set|delete)\b", "Proxmox change outside Terraform; it will drift"),
-    Rule("nix-switch", "high", r"(nixos-rebuild|darwin-rebuild)\s+(-\S+\s+)*(switch|boot)\b|nh\s+(os|darwin|home)\s+(switch|boot)\b|colmena\s+apply(-local)?\b|home-manager\s+switch\b", "switching a system generation; Shane does that by hand"),
-    Rule("systemctl-mutate", "high", r"systemctl\s+(-\S+\s+)*(stop|restart|disable|mask|kill|isolate|poweroff|reboot|halt)\b|(service|rc-service)\s+\S+\s+(stop|restart)\b", "stopping or restarting a service"),
-    Rule("power", "high", r"(shutdown|reboot|poweroff|halt|init\s+[06])\b", "powering a machine off or rebooting it"),
-    Rule("hook-config-tamper", "high", r"(sed\s+-i|tee|rm|rmdir|mv|cp|install|ln|truncate|chmod|chown|chattr)\b.*[\s/]" + _HOOK_FILES + r"(?=\s|$)", "rewriting, replacing, hiding or renaming agent hook config"),
-    Rule("hook-config-redirect", "high", r">+\s*" + _HOOK_FILES + r"(?=\s|$)", "redirecting output onto agent hook config", scope="segment"),
-    Rule("hook-config-edit", "high", _HOOK_FILES + r"$", "editing agent hook config", tools=("edit",)),
+    Rule(
+        "docker-volume-rm",
+        "high",
+        r"docker\s+volume\s+(rm|prune)\b|docker(-compose|\s+compose)\b.*\bdown\b.*(\s-v|--volumes)\b",
+        "deleting docker volumes",
+    ),
+    Rule(
+        "terraform-apply",
+        "high",
+        r"(terraform|tofu)\s+(-\S+\s+)*(apply|destroy|import|taint|untaint|state\s+(rm|mv|push)|force-unlock)\b",
+        "terraform/tofu changing real infra; that lands by PR",
+    ),
+    Rule(
+        "pve-mutate",
+        "high",
+        r"(qm|pct|pvesh|pvesm|pvecm|pveum)\s+(-\S+\s+)*"
+        + _PVE_VERBS
+        + r"\b|pvesh\s+(create|set|delete)\b",
+        "Proxmox change outside Terraform; it will drift",
+    ),
+    Rule(
+        "nix-switch",
+        "high",
+        r"(nixos-rebuild|darwin-rebuild)\s+(-\S+\s+)*(switch|boot)\b|nh\s+(os|darwin|home)\s+(switch|boot)\b|colmena\s+apply(-local)?\b|home-manager\s+switch\b",
+        "switching a system generation; Shane does that by hand",
+    ),
+    Rule(
+        "systemctl-mutate",
+        "high",
+        r"systemctl\s+(-\S+\s+)*(stop|restart|disable|mask|kill|isolate|poweroff|reboot|halt)\b|(service|rc-service)\s+\S+\s+(stop|restart)\b",
+        "stopping or restarting a service",
+    ),
+    Rule(
+        "power",
+        "high",
+        r"(shutdown|reboot|poweroff|halt|init\s+[06])\b",
+        "powering a machine off or rebooting it",
+    ),
+    Rule(
+        "hook-config-tamper",
+        "high",
+        r"(sed\s+-i|tee|rm|rmdir|mv|cp|install|ln|truncate|chmod|chown|chattr)\b.*[\s/]"
+        + _HOOK_FILES
+        + r"(?=\s|$)",
+        "rewriting, replacing, hiding or renaming agent hook config",
+    ),
+    Rule(
+        "hook-config-redirect",
+        "high",
+        r">+\s*" + _HOOK_FILES + r"(?=\s|$)",
+        "redirecting output onto agent hook config",
+        scope="segment",
+    ),
+    Rule(
+        "hook-config-edit", "high", _HOOK_FILES + r"$", "editing agent hook config", tools=("edit",)
+    ),
     # medium: context dependent
-    Rule("git-force-any", "medium", _GIT + r"push\b(?!.*--force-with-lease).*(--force|\s-f)\b", "force push; use --force-with-lease"),
-    Rule("git-checkout-dot", "medium", _GIT + r"(checkout|restore)\s+(--\s+)?\.(\s|$)", "discarding all working tree changes"),
+    Rule(
+        "git-force-any",
+        "medium",
+        _GIT + r"push\b(?!.*--force-with-lease).*(--force|\s-f)\b",
+        "force push; use --force-with-lease",
+    ),
+    Rule(
+        "git-checkout-dot",
+        "medium",
+        _GIT + r"(checkout|restore)\s+(--\s+)?\.(\s|$)",
+        "discarding all working tree changes",
+    ),
     Rule("git-stash-drop", "medium", _GIT + r"stash\s+(drop|clear)\b", "dropping stashes"),
     Rule("sudo-rm", "medium", r"sudo\s+(-\S+\s+)*rm\b", "rm as root"),
-    Rule("docker-prune", "medium", r"docker\s+(system|image|container|network)\s+prune\b", "docker prune"),
-    Rule("kubectl-delete", "medium", r"kubectl\s+((-\S+|--\S+)(\s+\S+)?\s+)*delete\b", "kubectl delete"),
-    Rule("sql-drop", "medium", r"(?i)\b(drop|truncate)\s+(database|table|schema)\b", "dropping a database object", scope="raw"),
+    Rule(
+        "docker-prune",
+        "medium",
+        r"docker\s+(system|image|container|network)\s+prune\b",
+        "docker prune",
+    ),
+    Rule(
+        "kubectl-delete",
+        "medium",
+        r"kubectl\s+((-\S+|--\S+)(\s+\S+)?\s+)*delete\b",
+        "kubectl delete",
+    ),
+    Rule(
+        "sql-drop",
+        "medium",
+        r"(?i)\b(drop|truncate)\s+(database|table|schema)\b",
+        "dropping a database object",
+        scope="raw",
+    ),
     Rule("mount", "medium", r"(mount|umount|mount\.nfs)\s", "mounting or unmounting a filesystem"),
     Rule("crontab-r", "medium", r"crontab\s+-r\b", "removing all cron jobs"),
     # low: worth a glance
     Rule("rm-rf", "low", r"rm\s+(-\S*[rR]\S*)(\s|$)", "recursive rm"),
     Rule("kill", "low", r"(kill\s+-9|killall|pkill)\b", "killing processes"),
 )
-# fmt: on
 
 
 @dataclass(frozen=True)
@@ -204,7 +373,9 @@ def parse_options(options: JsonObject) -> Options:
         ask=_levels(merged.get("ask"), "ask"),
         deny=_levels(merged.get("deny"), "deny"),
         disable=frozenset(as_str_list(merged.get("disable") or [], "disable")),
-        allow=tuple(re.compile(p, re.DOTALL) for p in as_str_list(merged.get("allow") or [], "allow")),
+        allow=tuple(
+            re.compile(p, re.DOTALL) for p in as_str_list(merged.get("allow") or [], "allow")
+        ),
         rules=tuple(_rule(spec) for spec in rules_value),
         unattended=_unattended(merged.get("unattended"), "unattended"),
     )
@@ -223,7 +394,9 @@ def _unattended(value: Json, what: str) -> Unattended:
 
 def active_rules(options: Options) -> list[Rule]:
     return [
-        r for r in (*BUILTIN, *options.rules) if RANK[r.level] <= RANK[options.level] and r.id not in options.disable
+        r
+        for r in (*BUILTIN, *options.rules)
+        if RANK[r.level] <= RANK[options.level] and r.id not in options.disable
     ]
 
 
@@ -276,7 +449,9 @@ def run(event: Event, options: JsonObject) -> Decision:
         if parsed.unattended == "allow":
             return Decision.none()
         return Decision.deny(
-            reason + f". This would ask, but permission mode {event.permission_mode} shows no prompt, so no"
+            reason
+            + f". This would ask, but permission mode {event.permission_mode} shows no prompt,"
+            " so no"
         )
     return Decision.deny(reason + ". Ask Shane before doing that")
 

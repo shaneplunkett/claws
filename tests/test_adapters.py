@@ -10,7 +10,9 @@ from claws.testing import all_fixtures, fixture_payloads
 CASES = all_fixtures()
 
 
-@pytest.mark.parametrize("harness,event,payload", CASES, ids=[f"{h}-{e}-{p.get('tool_name', '')}" for h, e, p in CASES])
+@pytest.mark.parametrize(
+    "harness,event,payload", CASES, ids=[f"{h}-{e}-{p.get('tool_name', '')}" for h, e, p in CASES]
+)
 def test_every_fixture_parses(harness: str, event: str, payload: JsonObject) -> None:
     ev = adapters.get(harness).parse(payload)
     assert ev.harness == harness
@@ -36,9 +38,14 @@ def test_shell_commands_come_through(harness: str) -> None:
 
 @pytest.mark.parametrize("harness", ["claude", "codex"])
 def test_permission_mode_comes_through(harness: str) -> None:
-    modes = {adapters.get(harness).parse(p).permission_mode for p in fixture_payloads(harness, "PreToolUse")}
+    modes = {
+        adapters.get(harness).parse(p).permission_mode
+        for p in fixture_payloads(harness, "PreToolUse")
+    }
     assert modes == {"bypassPermissions"}
-    assert all(adapters.get(harness).parse(p).unattended for p in fixture_payloads(harness, "PreToolUse"))
+    assert all(
+        adapters.get(harness).parse(p).unattended for p in fixture_payloads(harness, "PreToolUse")
+    )
 
 
 def test_missing_permission_mode_is_attended() -> None:
@@ -59,7 +66,9 @@ def test_claude_edit_paths() -> None:
 
 
 def test_codex_apply_patch_paths() -> None:
-    patches = [p for p in fixture_payloads("codex", "PreToolUse") if p["tool_name"] == "apply_patch"]
+    patches = [
+        p for p in fixture_payloads("codex", "PreToolUse") if p["tool_name"] == "apply_patch"
+    ]
     assert patches, "fixture set lost its apply_patch sample"
     ev = adapters.get("codex").parse(patches[0])
     assert ev.tool == "edit"
@@ -69,7 +78,11 @@ def test_codex_apply_patch_paths() -> None:
 def test_codex_apply_patch_multiple_files() -> None:
     patch = "*** Begin Patch\n*** Add File: a.py\n+x\n*** Update File: b/c.py\n@@\n-1\n+2\n*** Delete File: d\n*** End Patch"
     ev = adapters.get("codex").parse(
-        {"hook_event_name": "PreToolUse", "tool_name": "apply_patch", "tool_input": {"command": patch}}
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "apply_patch",
+            "tool_input": {"command": patch},
+        }
     )
     assert ev.paths == ("a.py", "b/c.py", "d")
 
@@ -131,4 +144,6 @@ class TestRender:
     def test_context_only(self, harness: str) -> None:
         ev = Event(harness=harness, kind="SessionStart")
         out = adapters.get(harness).render(Decision(context="hello"), ev)
-        assert out == {"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "hello"}}
+        assert out == {
+            "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "hello"}
+        }

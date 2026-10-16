@@ -2,7 +2,8 @@
 
 Ad hoc, from the command line:
 
-  claws-install --harness claude,codex --baps dangerous-commands [--set dangerous-commands.level=high] [--dir .]
+  claws-install --harness claude,codex --baps dangerous-commands \
+      [--set dangerous-commands.level=high] [--dir .]
 
 writes .claws.json (the manifest, safe to commit) and points the baps at it.
 
@@ -46,7 +47,8 @@ def bin_path() -> str:
 
 
 def is_ours(entry: Json, binary: str) -> bool:
-    """An entry we wrote earlier: the same binary, any claws-bap build, or a pre-rename claws-hook build."""
+    """An entry we wrote earlier: the same binary, any claws-bap build, or a pre-rename
+    claws-hook build."""
     if not isinstance(entry, dict):
         return False
     hooks = entry.get("hooks")
@@ -63,7 +65,10 @@ def is_ours(entry: Json, binary: str) -> bool:
 def entry_json(entry: HookEntry) -> JsonObject:
     """A TypedDict is a plain dict at runtime; spell it out so the Json type knows too."""
     out: JsonObject = {
-        "hooks": [{"type": h["type"], "command": h["command"], "timeout": h["timeout"]} for h in entry["hooks"]]
+        "hooks": [
+            {"type": h["type"], "command": h["command"], "timeout": h["timeout"]}
+            for h in entry["hooks"]
+        ]
     }
     if "matcher" in entry:
         out["matcher"] = entry["matcher"]
@@ -134,11 +139,19 @@ def say(quiet: bool, message: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="claws-install")
-    parser.add_argument("--harness", default=None, help="comma list; default claude,codex or what --from says")
-    parser.add_argument("--baps", default=None, help="comma list; default is what .claws.json says, else all")
+    parser.add_argument(
+        "--harness", default=None, help="comma list; default claude,codex or what --from says"
+    )
+    parser.add_argument(
+        "--baps", default=None, help="comma list; default is what .claws.json says, else all"
+    )
     parser.add_argument("--set", action="append", default=[], metavar="BAP.OPT=VALUE")
     parser.add_argument(
-        "--from", dest="from_file", default=None, metavar="FILE", help="declarative config to point baps at"
+        "--from",
+        dest="from_file",
+        default=None,
+        metavar="FILE",
+        help="declarative config to point baps at",
     )
     parser.add_argument("--dir", default=".")
     parser.add_argument("--bin", default=None)
@@ -150,7 +163,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.from_file:
         if args.baps or args.set:
-            raise SystemExit("--from takes its baps and options from the file; drop --baps and --set")
+            raise SystemExit(
+                "--from takes its baps and options from the file; drop --baps and --set"
+            )
         config_path = Path(args.from_file).resolve()
         declared = read_json(config_path, {})
         baps = list(as_object(declared.get("baps", {}), f"{config_path}: baps"))

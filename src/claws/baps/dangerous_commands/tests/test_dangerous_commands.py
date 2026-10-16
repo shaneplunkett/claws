@@ -375,7 +375,11 @@ class TestDecision:
         assert d.action == "deny"
         assert d.reason is not None and "bypassPermissions" in d.reason
         ev = Event(
-            harness="claude", kind="PreToolUse", tool="shell", command="git reset --hard", permission_mode="dontAsk"
+            harness="claude",
+            kind="PreToolUse",
+            tool="shell",
+            command="git reset --hard",
+            permission_mode="dontAsk",
         )
         assert paws.run(ev, opts).action == "deny"
 
@@ -383,7 +387,11 @@ class TestDecision:
         opts: JsonObject = {**OPTS, "ask": True}
         for mode in ("default", "acceptEdits", "plan", "auto", None):
             ev = Event(
-                harness="claude", kind="PreToolUse", tool="shell", command="git reset --hard", permission_mode=mode
+                harness="claude",
+                kind="PreToolUse",
+                tool="shell",
+                command="git reset --hard",
+                permission_mode=mode,
             )
             assert paws.run(ev, opts).action == "ask", mode
 
@@ -400,7 +408,11 @@ class TestDecision:
 
     def test_unattended_does_not_soften_deny(self) -> None:
         ev = Event(
-            harness="claude", kind="PreToolUse", tool="shell", command="rm -rf /", permission_mode="bypassPermissions"
+            harness="claude",
+            kind="PreToolUse",
+            tool="shell",
+            command="rm -rf /",
+            permission_mode="bypassPermissions",
         )
         assert paws.run(ev, {**OPTS, "ask": True, "unattended": "allow"}).action == "deny"
 
@@ -419,11 +431,19 @@ class TestCustomisation:
 
     def test_allow_pattern_wins(self) -> None:
         assert rule_for("systemctl restart plex", allow=[r"systemctl restart plex$"]) is None
-        assert rule_for("systemctl restart sshd", allow=[r"systemctl restart plex$"]) == "systemctl-mutate"
+        assert (
+            rule_for("systemctl restart sshd", allow=[r"systemctl restart plex$"])
+            == "systemctl-mutate"
+        )
 
     def test_extra_rule(self) -> None:
         rules: list[Json] = [
-            {"id": "unraid", "level": "high", "pattern": r"\bunraid\b", "reason": "leave unraid alone"}
+            {
+                "id": "unraid",
+                "level": "high",
+                "pattern": r"\bunraid\b",
+                "reason": "leave unraid alone",
+            }
         ]
         assert rule_for("ssh unraid ls", rules=rules) == "unraid"
         assert rule_for("ssh unraid ls", level="critical", rules=rules) is None
@@ -438,7 +458,12 @@ class TestCustomisation:
 
     def test_extra_edit_rule(self) -> None:
         rules: list[Json] = [
-            {"id": "no-lock", "pattern": r"flake\.lock$", "tools": ["edit"], "reason": "lock is CI's job"}
+            {
+                "id": "no-lock",
+                "pattern": r"flake\.lock$",
+                "tools": ["edit"],
+                "reason": "lock is CI's job",
+            }
         ]
         rule = paws.match(edit("/repo/flake.lock"), {**OPTS, "rules": rules})
         assert rule and rule.id == "no-lock"
@@ -462,12 +487,20 @@ class TestEdits:
         assert rule and rule.id == "hook-config-edit"
 
     @pytest.mark.parametrize(
-        "path", ["/repo/README.md", "/repo/.claude/commands/x.md", "/repo/settings.json", "/repo/.codex/AGENTS.md"]
+        "path",
+        [
+            "/repo/README.md",
+            "/repo/.claude/commands/x.md",
+            "/repo/settings.json",
+            "/repo/.codex/AGENTS.md",
+        ],
     )
     def test_other_edits_pass(self, path: str) -> None:
         assert paws.match(edit(path), OPTS) is None
 
     def test_codex_apply_patch_fixture_is_fine(self) -> None:
-        patches = [p for p in fixture_payloads("codex", "PreToolUse") if p["tool_name"] == "apply_patch"]
+        patches = [
+            p for p in fixture_payloads("codex", "PreToolUse") if p["tool_name"] == "apply_patch"
+        ]
         ev = adapters.get("codex").parse(patches[0])
         assert paws.run(ev, OPTS).action == "none"

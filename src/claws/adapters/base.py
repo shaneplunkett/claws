@@ -38,7 +38,9 @@ class Adapter:
             raw=payload,
         )
 
-    def parse_tool(self, raw_tool: str | None, tool_input: Json) -> tuple[ToolClass | None, str | None, list[str]]:
+    def parse_tool(
+        self, raw_tool: str | None, tool_input: Json
+    ) -> tuple[ToolClass | None, str | None, list[str]]:
         if raw_tool is None:
             return None, None, []
         if raw_tool in self.shell_tools:

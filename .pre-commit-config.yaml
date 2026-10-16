@@ -1,0 +1,10 @@
+# The gate, for every commit.
+repos:
+  - repo: local
+    hooks:
+      - id: check
+        name: scripts/check.sh
+        entry: scripts/in-dev-shell.sh scripts/check.sh
+        language: system
+        pass_filenames: false
+        always_run: true

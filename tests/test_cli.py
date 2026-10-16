@@ -21,7 +21,8 @@ def test_fixtures_run_clean(harness: str) -> None:
 @pytest.mark.parametrize("harness", ["claude", "codex"])
 def test_deny_end_to_end(harness: str) -> None:
     out, _ = run_cli(
-        ["dangerous-commands", "--harness", harness], json.dumps(shell_payload(harness, "git reset --hard"))
+        ["dangerous-commands", "--harness", harness],
+        json.dumps(shell_payload(harness, "git reset --hard")),
     )
     decision, reason = permission(out)
     assert decision == "deny"
@@ -48,7 +49,9 @@ def test_unknown_bap_still_exits_zero() -> None:
 
 
 def test_unknown_harness_still_exits_zero() -> None:
-    out, err = run_cli(["dangerous-commands", "--harness", "gemini"], json.dumps(shell_payload("claude", "ls")))
+    out, err = run_cli(
+        ["dangerous-commands", "--harness", "gemini"], json.dumps(shell_payload("claude", "ls"))
+    )
     assert permission(out)[0] == "deny"
     assert "unknown harness" in err
 
@@ -57,7 +60,8 @@ def test_broken_config_fails_closed(tmp_path: Path) -> None:
     cfg = tmp_path / "c.json"
     cfg.write_text("{nope")
     out, _ = run_cli(
-        ["dangerous-commands", "--harness", "claude", "--config", str(cfg)], json.dumps(shell_payload("claude", "ls"))
+        ["dangerous-commands", "--harness", "claude", "--config", str(cfg)],
+        json.dumps(shell_payload("claude", "ls")),
     )
     assert permission(out)[0] == "deny"
 

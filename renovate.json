@@ -1,0 +1,6 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "local>shane/workflows"],
+  "reviewers": ["metrokitten"],
+  "dependencyDashboard": false
+}

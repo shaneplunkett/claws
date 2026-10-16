@@ -21,7 +21,9 @@ def manifest() -> JsonObject:
     return out
 
 
-def render(harness: str, baps: list[str], bin_path: str, config_path: str | None = None) -> HookBlock:
+def render(
+    harness: str, baps: list[str], bin_path: str, config_path: str | None = None
+) -> HookBlock:
     """Return the {event: [entries]} block a harness wants in its hook config."""
     adapter = adapters.get(harness)
     out: HookBlock = {}
@@ -30,7 +32,9 @@ def render(harness: str, baps: list[str], bin_path: str, config_path: str | None
         command = f"{bin_path} {name} --harness {harness}"
         if config_path:
             command += f" --config {config_path}"
-        entry: HookEntry = {"hooks": [{"type": "command", "command": command, "timeout": spec.timeout}]}
+        entry: HookEntry = {
+            "hooks": [{"type": "command", "command": command, "timeout": spec.timeout}]
+        }
         if spec.tools:
             entry["matcher"] = "|".join(adapter.matchers[t] for t in spec.tools)
         out.setdefault(spec.event, []).append(entry)
@@ -45,7 +49,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", default=None)
     args = parser.parse_args(argv)
     data: JsonObject | HookBlock = (
-        render(args.render, args.baps.split(","), args.bin, args.config) if args.render else manifest()
+        render(args.render, args.baps.split(","), args.bin, args.config)
+        if args.render
+        else manifest()
     )
     json.dump(data, sys.stdout, indent=2, sort_keys=True)
     print()

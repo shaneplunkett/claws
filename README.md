@@ -11,13 +11,14 @@ A hook is a small program a coding agent runs at a fixed point in its loop: befo
 - A home-manager module for installing baps globally.
 - A `lib.project` function for declaring baps in a repo's own flake.
 - An installer, `nix run .#install`, for the ad hoc case.
-- Tests for every bap under `nix flake check`, using payloads captured from both harnesses.
+- Tests for every bap, using payloads captured from both harnesses.
 
 ## Layout
 
 ```
-flake.nix                outputs: packages, lib, homeManagerModules, apps.install, checks, devShells
-nix/                     lib.nix renders a hook set into harness config; hm-module.nix; hooks.nix discovers hook.nix files
+flake.nix                outputs: packages, lib, homeManagerModules, apps.install, checks, devShells, formatter
+nix/                     lib.nix renders a bap set into harness config; baps.nix discovers bap.nix files; hm-module.nix; project.nix
+scripts/check.sh         the gate: pre-commit, CI and the agent hooks all run it
 src/claws/
   core/                  events, JSON types, config layering, the bap registry
   adapters/              one module per harness: payload in, response out
@@ -91,4 +92,4 @@ Codex only runs project-level hooks it trusts. Either trust them once interactiv
 
 ## Status
 
-One bap, end to end. `nix flake check` runs the Python tests, strict mypy, ruff, nixfmt, statix and deadnix, a check that the Nix renderer matches the Python one, an eval of the home-manager module, and a run of the project installer inside a fresh git repo. The deny path has been run live against both harnesses, and claws installs dangerous-commands into its own repo from its dev shell.
+One bap, end to end. `scripts/check.sh` is the gate: it bans suppression comments, then runs nixfmt, statix, deadnix, ruff, strict mypy and pytest, then `nix flake check`. That builds the package with its tests, checks the Nix renderer matches the Python one, evaluates the home-manager module, and runs the project installer inside a fresh git repo. The deny path has been run live against both harnesses, and claws installs dangerous-commands into its own repo from its dev shell.

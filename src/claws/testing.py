@@ -16,7 +16,9 @@ SRC = Path(__file__).resolve().parents[1]
 
 def fixture_payloads(harness: str, event: str) -> list[JsonObject]:
     path = FIXTURES / harness / f"{event}.jsonl"
-    return [as_object(loads(line), path.name) for line in path.read_text().splitlines() if line.strip()]
+    return [
+        as_object(loads(line), path.name) for line in path.read_text().splitlines() if line.strip()
+    ]
 
 
 def all_fixtures() -> list[tuple[str, str, JsonObject]]:
@@ -40,7 +42,9 @@ def shell_payload(harness: str, command: str, cwd: str | None = None) -> JsonObj
 
 
 def shell_event(command: str, harness: str = "claude") -> Event:
-    return Event(harness=harness, kind="PreToolUse", tool="shell", raw_tool_name="Bash", command=command)
+    return Event(
+        harness=harness, kind="PreToolUse", tool="shell", raw_tool_name="Bash", command=command
+    )
 
 
 def edit_event(*paths: str, harness: str = "claude") -> Event:
@@ -55,10 +59,15 @@ def permission(out: JsonObject) -> tuple[str, str]:
     )
 
 
-def run_cli(args: list[str], stdin: str, env: dict[str, str] | None = None) -> tuple[JsonObject, str]:
+def run_cli(
+    args: list[str], stdin: str, env: dict[str, str] | None = None
+) -> tuple[JsonObject, str]:
     """Run claws-bap the way a harness does: a fresh isolated interpreter, stdin in, JSON out.
     -I drops PYTHONPATH, so point at the source tree explicitly via a -c shim."""
-    code = f"import sys; sys.path.insert(0, {str(SRC)!r}); from claws.cli.bap import main; sys.exit(main(sys.argv[1:]))"
+    code = (
+        f"import sys; sys.path.insert(0, {str(SRC)!r}); "
+        "from claws.cli.bap import main; sys.exit(main(sys.argv[1:]))"
+    )
     proc = subprocess.run(
         [sys.executable, "-I", "-c", code, *args],
         input=stdin,

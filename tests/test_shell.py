@@ -100,7 +100,15 @@ def test_empty() -> None:
 
 
 def test_prefixes_regex_skips_wrappers() -> None:
-    for text in ("sudo rm", "sudo -u root rm", "FOO=1 BAR=2 rm", "env rm", "timeout 5 rm", "nohup nice -n 5 rm", "rm"):
+    for text in (
+        "sudo rm",
+        "sudo -u root rm",
+        "FOO=1 BAR=2 rm",
+        "env rm",
+        "timeout 5 rm",
+        "nohup nice -n 5 rm",
+        "rm",
+    ):
         assert shell.PREFIXES.sub("", text) == "rm", text
 
 

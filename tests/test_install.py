@@ -42,7 +42,10 @@ def test_install_keeps_foreign_entries_and_replaces_ours(tmp_path: Path) -> None
                 "permissions": {"allow": ["Bash(ls)"]},
                 "hooks": {
                     "PreToolUse": [
-                        {"matcher": "Bash", "hooks": [{"type": "command", "command": "/their/thing"}]},
+                        {
+                            "matcher": "Bash",
+                            "hooks": [{"type": "command", "command": "/their/thing"}],
+                        },
                         {
                             "matcher": "Bash",
                             "hooks": [
@@ -55,7 +58,10 @@ def test_install_keeps_foreign_entries_and_replaces_ours(tmp_path: Path) -> None
                         {
                             "matcher": "Bash",
                             "hooks": [
-                                {"type": "command", "command": "/nix/store/older/bin/claws-hook paws --harness claude"}
+                                {
+                                    "type": "command",
+                                    "command": "/nix/store/older/bin/claws-hook paws --harness claude",
+                                }
                             ],
                         },
                     ],
@@ -85,7 +91,9 @@ def test_install_keeps_foreign_entries_and_replaces_ours(tmp_path: Path) -> None
 
 
 def test_install_reuses_manifest_baps(tmp_path: Path) -> None:
-    (tmp_path / ".claws.json").write_text(json.dumps({"baps": {"dangerous-commands": {"level": "low"}}}))
+    (tmp_path / ".claws.json").write_text(
+        json.dumps({"baps": {"dangerous-commands": {"level": "low"}}})
+    )
     install.main(["--dir", str(tmp_path), "--harness", "codex", "--bin", "x"])
     m = json.loads((tmp_path / ".claws.json").read_text())
     assert m["baps"]["dangerous-commands"]["level"] == "low"
@@ -101,10 +109,17 @@ def test_install_rejects_unknown_bap(tmp_path: Path) -> None:
 def test_install_from_declarative_config(tmp_path: Path) -> None:
     cfg = tmp_path / "store" / "claws.json"
     cfg.parent.mkdir()
-    cfg.write_text(json.dumps({"harnesses": ["codex"], "baps": {"dangerous-commands": {"level": "low"}}}))
+    cfg.write_text(
+        json.dumps({"harnesses": ["codex"], "baps": {"dangerous-commands": {"level": "low"}}})
+    )
     repo = tmp_path / "repo"
     repo.mkdir()
-    assert install.main(["--dir", str(repo), "--from", str(cfg), "--bin", "/nix/store/x/bin/claws-bap"]) == 0
+    assert (
+        install.main(
+            ["--dir", str(repo), "--from", str(cfg), "--bin", "/nix/store/x/bin/claws-bap"]
+        )
+        == 0
+    )
     assert not (repo / ".claws.json").exists(), "declarative mode must not write a manifest"
     assert not (repo / ".claude").exists(), "harnesses came from the file"
     data = json.loads((repo / ".codex" / "hooks.json").read_text())
@@ -116,7 +131,18 @@ def test_from_rejects_baps_and_set(tmp_path: Path) -> None:
     cfg = tmp_path / "c.json"
     cfg.write_text(json.dumps({"baps": {"dangerous-commands": {}}}))
     with pytest.raises(SystemExit):
-        install.main(["--dir", str(tmp_path), "--from", str(cfg), "--baps", "dangerous-commands", "--bin", "x"])
+        install.main(
+            [
+                "--dir",
+                str(tmp_path),
+                "--from",
+                str(cfg),
+                "--baps",
+                "dangerous-commands",
+                "--bin",
+                "x",
+            ]
+        )
 
 
 def test_install_is_idempotent(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -139,7 +165,9 @@ def test_generated_files_are_git_excluded(tmp_path: Path) -> None:
 def test_git_exclude_appends_to_file_without_trailing_newline(tmp_path: Path) -> None:
     (tmp_path / ".git" / "info").mkdir(parents=True)
     (tmp_path / ".git" / "info" / "exclude").write_text("*.swp")
-    install.main(["--dir", str(tmp_path), "--harness", "codex", "--baps", "dangerous-commands", "--bin", "x"])
+    install.main(
+        ["--dir", str(tmp_path), "--harness", "codex", "--baps", "dangerous-commands", "--bin", "x"]
+    )
     assert (tmp_path / ".git" / "info" / "exclude").read_text() == "*.swp\n.codex/hooks.json\n"
 
 

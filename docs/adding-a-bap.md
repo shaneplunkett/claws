@@ -11,4 +11,4 @@ A bap is one claws hook, a directory under `src/claws/baps/`. Nothing central li
 2. Baps never read a raw payload. They get an `Event` from the adapter and return a `Decision`. If you need a field the `Event` lacks, add it to `Event` and to both adapters, with a fixture-backed test.
 3. Options arrive as a `JsonObject` already merged across layers. Validate them with the helpers in `claws.core.jsontypes` and raise `ValueError` on bad input. A `fail_closed` bap turns that into a deny with the message in the reason.
 4. Choose `fail_closed` deliberately. A guard should be `True`. Something cosmetic that runs after an edit should be `False`.
-5. Run `nix flake check`. That covers pytest, strict mypy, ruff, nixfmt, statix, deadnix, the manifest-sync check and the home-manager module eval.
+5. Run `scripts/check.sh`. That covers ruff, strict mypy, pytest, nixfmt, statix and deadnix, then `nix flake check` for the manifest-sync check and the home-manager module eval.
