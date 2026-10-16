@@ -18,7 +18,7 @@ programs.claws.bap.dangerous-commands = {
 };
 ```
 
-The same keys go under `baps.dangerous-commands` in a project `.claws.json`.
+The same keys go under `bap.dangerous-commands` in a repo's `lib.project` call.
 
 Older configs may still set `ask`, `deny` or `unattended`. Those options are gone and the bap ignores them rather than failing closed on every command.
 

@@ -51,8 +51,8 @@ def test_heredoc_body_dropped() -> None:
 
 
 def test_heredoc_with_redirect_keeps_target() -> None:
-    text = "cat <<EOF > .claws.json\n{}\nEOF"
-    assert views(text) == ["cat > .claws.json"]
+    text = "cat <<EOF > out.json\n{}\nEOF"
+    assert views(text) == ["cat > out.json"]
 
 
 def test_command_substitution_is_its_own_command() -> None:

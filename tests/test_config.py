@@ -1,4 +1,4 @@
-"""Config layering: defaults, then --config/$CLAWS_CONFIG, then .claws.json up to the git root."""
+"""Config layering: defaults, then --config/$CLAWS_CONFIG."""
 
 from __future__ import annotations
 
@@ -44,45 +44,27 @@ def test_retired_ask_options_still_deny_by_rule(tmp_path: Path) -> None:
     assert "git-reset-hard" in reason
 
 
-def test_project_config_found_from_cwd(tmp_path: Path) -> None:
+def test_stray_claws_json_is_ignored(tmp_path: Path) -> None:
+    # ADR 0003 retired the per-repo manifest; a leftover one must not loosen anything.
     (tmp_path / ".git").mkdir()
     (tmp_path / ".claws.json").write_text(
         json.dumps({"baps": {"dangerous-commands": {"disable": ["git-reset-hard"]}}})
     )
-    sub = tmp_path / "a" / "b"
-    sub.mkdir(parents=True)
     out, _ = run_cli(
         ["dangerous-commands", "--harness", "claude"],
-        json.dumps(shell_payload("claude", "git reset --hard", cwd=str(sub))),
-    )
-    assert out == {}
-
-
-def test_project_config_stops_at_git_root(tmp_path: Path) -> None:
-    (tmp_path / ".claws.json").write_text(
-        json.dumps({"baps": {"dangerous-commands": {"disable": ["git-reset-hard"]}}})
-    )
-    repo = tmp_path / "repo"
-    (repo / ".git").mkdir(parents=True)
-    out, _ = run_cli(
-        ["dangerous-commands", "--harness", "claude"],
-        json.dumps(shell_payload("claude", "git reset --hard", cwd=str(repo))),
+        json.dumps(shell_payload("claude", "git reset --hard", cwd=str(tmp_path))),
     )
     assert permission(out)[0] == "deny"
 
 
-def test_layers_merge_lists_and_override_scalars(tmp_path: Path) -> None:
-    glob = tmp_path / "g.json"
-    glob.write_text(
+def test_config_file_merges_over_defaults(tmp_path: Path) -> None:
+    cfg = tmp_path / "c.json"
+    cfg.write_text(
         json.dumps({"baps": {"dangerous-commands": {"level": "medium", "allow": ["^a$"]}}})
     )
-    (tmp_path / ".git").mkdir()
-    (tmp_path / ".claws.json").write_text(
-        json.dumps({"baps": {"dangerous-commands": {"level": "low", "allow": ["^b$"]}}})
-    )
-    opts = config.for_bap("dangerous-commands", paws.BAP.options(), str(glob), str(tmp_path))
-    assert opts["level"] == "low"
-    assert opts["allow"] == ["^a$", "^b$"]
+    opts = config.for_bap("dangerous-commands", {**paws.BAP.options(), "allow": ["^d$"]}, str(cfg))
+    assert opts["level"] == "medium"
+    assert opts["allow"] == ["^d$", "^a$"]
 
 
 def test_merge_nested_objects() -> None:
@@ -95,6 +77,4 @@ def test_merge_nested_objects() -> None:
 def test_missing_section_is_fine(tmp_path: Path) -> None:
     cfg = tmp_path / "c.json"
     cfg.write_text(json.dumps({"baps": {"other": {"x": 1}}}))
-    assert config.for_bap("dangerous-commands", {"level": "high"}, str(cfg), None) == {
-        "level": "high"
-    }
+    assert config.for_bap("dangerous-commands", {"level": "high"}, str(cfg)) == {"level": "high"}

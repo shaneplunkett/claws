@@ -75,9 +75,7 @@ _DEV = (
 )
 # The files, and the directories that hold them: renaming .codex away disables the hooks
 # just as well.
-_HOOK_FILES = (
-    r"(\.claws\.json|\.claude(/settings(\.local)?\.json)?|\.codex(/(hooks\.json|config\.toml))?)"
-)
+_HOOK_FILES = r"(\.claude(/settings(\.local)?\.json)?|\.codex(/(hooks\.json|config\.toml))?)"
 _SYSTEM_DIRS = r"(etc|usr|var|bin|sbin|lib|lib64|boot|dev|proc|sys|nix|opt|home|root|srv)"
 # git's global options sit between `git` and the subcommand: git -C repo --no-pager push ...
 _GIT = (
