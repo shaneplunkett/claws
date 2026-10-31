@@ -5,4 +5,4 @@ on:
 
 jobs:
   check:
-    uses: shane/workflows/.forgejo/workflows/check.yml@v1.7.0
+    uses: shane/workflows/.forgejo/workflows/check.yml@v1.9.0
