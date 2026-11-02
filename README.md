@@ -35,7 +35,7 @@ docs/adding-a-bap.md     the checklist for a new bap
 As a flake input in home-manager:
 
 ```nix
-inputs.claws.url = "git+ssh://forgejo@forge/shane/claws";
+inputs.claws.url = "github:shaneplunkett/claws";
 
 # in home config
 imports = [ inputs.claws.homeManagerModules.default ];
