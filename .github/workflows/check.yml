@@ -1,0 +1,17 @@
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: check-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    uses: shaneplunkett/workflows/.github/workflows/check.yml@v2.3.0
+    secrets:
+      INPUTS_TOKEN: ${{ github.token }}
