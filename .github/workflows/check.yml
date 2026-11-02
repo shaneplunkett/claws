@@ -12,6 +12,6 @@ permissions:
 
 jobs:
   check:
-    uses: shaneplunkett/workflows/.github/workflows/check.yml@v2.3.0
+    uses: shaneplunkett/workflows/.github/workflows/check.yml@v3.0.0
     secrets:
       INPUTS_TOKEN: ${{ github.token }}
