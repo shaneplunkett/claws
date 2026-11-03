@@ -9,9 +9,10 @@ concurrency:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   check:
-    uses: shaneplunkett/workflows/.github/workflows/check.yml@v3.0.0
+    uses: shaneplunkett/workflows/.github/workflows/check.yml@v4.0.0
     secrets:
       INPUTS_TOKEN: ${{ github.token }}
